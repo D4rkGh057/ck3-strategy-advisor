@@ -15,6 +15,7 @@ import { registerGameLookupTools } from "./gameLookup.js";
 import { registerCouncilTool } from "./council.js";
 import { registerTargetsTool } from "./targets.js";
 import { registerCourtiersTool } from "./courtiers.js";
+import { registerHistoryTool } from "./history.js";
 
 type ToolResult = { content: { type: string; text?: string }[] };
 
@@ -64,4 +65,5 @@ function registerEach(server: McpServer, cache: SnapshotCache) {
   registerCouncilTool(server, cache);
   registerTargetsTool(server, cache);
   registerCourtiersTool(server, cache);
+  registerHistoryTool(server, cache);
 }
