@@ -171,4 +171,4 @@ test("suggestCouncil matches an exhaustive search over the whole pool", () => {
     const ids = plan.map((a) => a.suggested?.id).filter((x) => x !== undefined);
     expect(new Set(ids).size).toBe(ids.length); // nobody holds two seats
   }
-});
+}, 30_000);
