@@ -184,3 +184,20 @@ test("a temple leased to the church (theocratic_lease) is not counted against th
   );
   expect(roscrea).toMatchObject({ leased: true });
 });
+
+import { queryGamestate as queryFixture } from "../src/parser.js";
+import { buildParentIndex as parentIndex } from "../src/extract/family.js";
+
+test("buildParentIndex gives the same index when the caller passes /living it already read", async () => {
+  const gs = Buffer.from(
+    "living={\n1={ first_name=A family_data={ child={ 3 4 } } }\n2={ first_name=B family_data={ child=3 } }\n}\n" +
+      "dead_unprunable={\n5={ first_name=C family_data={ child=4 } }\n}\n",
+  );
+  const [plain, shared] = await queryFixture(gs, (q) => [
+    parentIndex(q),
+    parentIndex(q, q.at("/living") as Record<string, unknown>),
+  ]);
+  expect(plain.get(3)).toEqual([1, 2]);
+  expect(plain.get(4)).toEqual([1, 5]); // a living and a dead parent
+  expect([...shared]).toEqual([...plain]);
+});

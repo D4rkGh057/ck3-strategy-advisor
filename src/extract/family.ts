@@ -23,10 +23,17 @@ export interface FamilyInfo {
 
 // The save stores only parent -> child links (family_data.child); invert them
 // across living and dead characters to answer "who are X's parents".
-export function buildParentIndex(q: Query): Map<number, number[]> {
+// `living` may be passed when the caller already materialized /living (each read costs ~2s).
+export function buildParentIndex(
+  q: Query,
+  living?: Record<string, unknown>,
+): Map<number, number[]> {
   const index = new Map<number, number[]>();
   for (const section of ["living", "dead_unprunable"]) {
-    const all = (q.at(`/${section}`) as Record<string, unknown> | undefined) ?? {};
+    const all =
+      section === "living" && living
+        ? living
+        : ((q.at(`/${section}`) as Record<string, unknown> | undefined) ?? {});
     for (const [key, raw] of Object.entries(all)) {
       const rec = (Array.isArray(raw) ? raw[0] : raw) as Record<string, unknown> | undefined;
       if (!rec || typeof rec !== "object") continue;

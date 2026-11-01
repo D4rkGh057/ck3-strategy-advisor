@@ -49,10 +49,14 @@ export function extractPool(
   const playerId = q.at("/played_character/character") as number;
   const me = q.at(`/living/${playerId}`) as Record<string, unknown> | undefined;
   if (!me) return null;
-  const faithOf = (rite: unknown): number | undefined =>
-    typeof rite === "number"
-      ? (num(q.at(`/rites/database/${rite}/faith`)) ?? undefined)
-      : undefined;
+  // Thousands of characters share a few rites; each q.at costs ~1ms, so look each rite up once.
+  const riteFaith = new Map<number, number | undefined>();
+  const faithOf = (rite: unknown): number | undefined => {
+    if (typeof rite !== "number") return undefined;
+    if (!riteFaith.has(rite))
+      riteFaith.set(rite, num(q.at(`/rites/database/${rite}/faith`)) ?? undefined);
+    return riteFaith.get(rite);
+  };
   const myFaith = faithOf(me["rite"]);
   if (myFaith === undefined) return null;
 

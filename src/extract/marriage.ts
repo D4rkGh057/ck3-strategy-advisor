@@ -182,13 +182,14 @@ export function extractMarriageCandidates(
     typeof house === "number" ? num(q.at(`/dynasties/dynasty_house/${house}/dynasty`)) : null;
   const subjectDynasty = houseDynasty(subjectRec["dynasty_house"]);
 
-  const kin = new Kin(q, buildParentIndex(q));
+  // /living is slow to materialize: read it once and share it with the parent index.
+  const all = (q.at("/living") as Record<string, unknown> | undefined) ?? {};
+  const kin = new Kin(q, buildParentIndex(q, all));
   const playerRec = characterRecord(q, playerId);
   const playerProvince = num(
     ((playerRec?.["alive_data"] as Rec | undefined)?.["location"] as Rec | undefined)?.["location"],
   );
   const maxDistance = opts.maxDistance ?? DEFAULT_RANGE;
-  const all = (q.at("/living") as Record<string, unknown> | undefined) ?? {};
   const rec = (id: number): Rec | null => {
     const raw = all[String(id)];
     const r = Array.isArray(raw) ? raw[0] : raw;
