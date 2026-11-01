@@ -68,6 +68,12 @@ test("ranks guardians by the focus skill and drops adults who already have two w
   expect(baby.picks).toEqual([]);
 });
 
+test("always lists the current guardian, even below the top picks", async () => {
+  const r = (await queryGamestate(GS, (q) => extractGuardians(q, new Localizer(null), null, 1)))!;
+  const kid = r.children.find((c) => c.name === "Kid")!;
+  expect(kid.picks.map((p) => p.person.name)).toEqual(["Tutor", "Guardian"]);
+});
+
 test("applies the validity rules per court position", async () => {
   const r = (await run())!;
   const tutor = r.roles.find((x) => x.role === "tutor")!;

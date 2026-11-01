@@ -476,7 +476,9 @@ export function extractGuardians(
         wetNurse: nurse !== undefined ? nameOf(nurse) : null,
       };
       // Guardian: a physically able adult with fewer than two wards (educate_child_interaction).
-      const picks: GuardianPick[] = focus
+      // Holding another court position does not matter here. The current guardian is always
+      // listed (even below the top `perChild`) so the score can be compared against the best picks.
+      const scored: GuardianPick[] = focus
         ? adults
             .filter(
               (a) =>
@@ -490,8 +492,10 @@ export function extractGuardians(
               skill: a.skills[focus],
             }))
             .sort((a, b) => b.value - a.value)
-            .slice(0, perChild)
         : [];
+      const picks = scored.slice(0, perChild);
+      const current = scored.find((p) => p.person.id === guardian);
+      if (current && !picks.includes(current)) picks.push(current);
       return { ...entry, picks };
     })
     .sort((a, b) => a.age - b.age);
