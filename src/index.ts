@@ -9,6 +9,7 @@ import { GameData } from "./gameData.js";
 import { modLocalizationDirs } from "./mods.js";
 import { dirname } from "node:path";
 import { registerAllTools } from "./tools/index.js";
+import { HistoryStore, defaultHistoryDir } from "./history.js";
 
 async function main() {
   const cfg = resolveConfig();
@@ -21,6 +22,7 @@ async function main() {
     new SaveFileSource({ saveDir }),
     new Localizer(cfg.gameDir, modLocalizationDirs(dirname(saveDir))),
     new GameData(cfg.gameDir),
+    new HistoryStore(defaultHistoryDir()),
   );
   const server = new McpServer(
     { name: "ck3-strategy-advisor", version: "0.1.0" },

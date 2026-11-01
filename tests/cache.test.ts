@@ -91,3 +91,29 @@ test("memoQuery surfaces a missing save as { error } without caching it", async 
   const cache = new SnapshotCache(new SaveFileSource({ saveDir: dir }), new Localizer(null));
   expect("error" in ((await cache.memoQuery("k", () => 1)) as object)).toBe(true);
 });
+
+test("cache records each built save into the history store without failing the get", async () => {
+  const { HistoryStore } = await import("../src/history.js");
+  const dir = mkdtempSync(join(tmpdir(), "ck3-"));
+  const hist = mkdtempSync(join(tmpdir(), "ck3-hist-"));
+  writeFileSync(join(dir, "game.ck3"), makeTextEnvelope(GS));
+  const store = new HistoryStore(hist);
+  const cache = new SnapshotCache(
+    new SaveFileSource({ saveDir: dir }),
+    new Localizer(null),
+    undefined,
+    store,
+  );
+  const snap = await cache.get();
+  expect("error" in snap).toBe(false);
+  await cache.history!.record(snap as never); // same timer: idempotent, also awaits the write
+  expect((await store.read("009c045a-2d8b-4490-b153-3517ecf30c07")).length).toBe(1);
+});
+
+test("a failing history store never breaks the cache", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "ck3-"));
+  writeFileSync(join(dir, "game.ck3"), makeTextEnvelope(GS));
+  const broken = { record: () => Promise.reject(new Error("disk full")) } as never;
+  const cache = new SnapshotCache(new SaveFileSource({ saveDir: dir }), new Localizer(null), undefined, broken);
+  expect("error" in (await cache.get())).toBe(false);
+});
