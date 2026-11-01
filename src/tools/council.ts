@@ -55,7 +55,8 @@ export function registerCouncilTool(server: McpServer, cache: SnapshotCache) {
       const snap = await cache.get();
       if ("error" in snap) return { isError: true, content: [{ type: "text", text: snap.error }] };
       const year = Number.parseInt(snap.date, 10);
-      const result = await cache.query((q) => ({
+      // Same key and shape as `court_candidates`, so the two share one extraction per save.
+      const result = await cache.memoQuery("council", (q) => ({
         council: extractCouncil(
           q,
           cache.loc,

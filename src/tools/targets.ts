@@ -46,7 +46,9 @@ export function registerTargetsTool(server: McpServer, cache: SnapshotCache) {
     async ({ limit }: { limit?: number }) => {
       const snap = await cache.get();
       if ("error" in snap) return { isError: true, content: [{ type: "text", text: snap.error }] };
-      const result = await cache.query((q) => extractTargets(q, cache.loc, snap.military.strength));
+      const result = await cache.memoQuery("expansion_targets", (q) =>
+        extractTargets(q, cache.loc, snap.military.strength),
+      );
       if (result !== null && typeof result === "object" && "error" in result)
         return {
           isError: true,

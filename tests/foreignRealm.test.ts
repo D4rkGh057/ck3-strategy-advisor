@@ -127,7 +127,12 @@ describe("foreign_realm tool", () => {
 
   it("returns a stamped no-match line when nothing matches", async () => {
     const snap = { date: "1130-07-24", parsedAt: Date.now() } as any;
-    const cache = { get: async () => snap, query: async () => null, loc: null } as any;
+    const cache = {
+      get: async () => snap,
+      query: async () => null,
+      memoQuery: async () => null,
+      loc: null,
+    } as any;
     let handler: any;
     const server = {
       registerTool: (_n: string, _c: any, h: any) => {

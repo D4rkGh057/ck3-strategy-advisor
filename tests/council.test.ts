@@ -95,3 +95,80 @@ test("the player's spouse is not suggested for another seat", () => {
   };
   expect(suggestCouncil(info).find((a) => a.role === "steward")!.suggested!.id).toBe(2);
 });
+
+// suggestCouncil searches only each seat's top candidates; it must still find the same optimum
+// as trying everyone, including when one strong person leads several seats.
+import {
+  suggestCouncil as suggest,
+  riskPenalty as penalty,
+  ROLE_SKILL as SEAT_SKILL,
+  type Courtier as CourtierT,
+  type CouncilRole as Role,
+} from "../src/extract/council.js";
+
+test("suggestCouncil matches an exhaustive search over the whole pool", () => {
+  let seed = 12345;
+  const rnd = (n: number) => {
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+    return seed % n;
+  };
+  const roles = Object.keys(SEAT_SKILL) as Role[];
+  for (let round = 0; round < 25; round++) {
+    const courtiers: CourtierT[] = Array.from({ length: 14 }, (_, i) => ({
+      id: i + 1,
+      name: `C${i + 1}`,
+      age: 20 + rnd(60),
+      skills: {
+        diplomacy: rnd(25),
+        martial: rnd(25),
+        stewardship: rnd(25),
+        intrigue: rnd(25),
+        learning: rnd(25),
+        prowess: rnd(25),
+      },
+      traits: [],
+      traitKeys: rnd(5) === 0 ? ["ill"] : [],
+      knight: false,
+      seat: null,
+      vassal: false,
+      sameHouse: false,
+      health: null,
+      opinion: rnd(3) === 0 ? -rnd(40) : null,
+      claim: rnd(8) === 0 ? "unpressed" : null,
+      inFaction: false,
+    }));
+    const seats = Object.fromEntries(roles.map((r) => [r, null])) as Record<Role, number | null>;
+    const plan = suggest({ courtiers, seats });
+    const value = (picks: (CourtierT | null)[]) =>
+      picks.reduce(
+        (sum, p, i) => sum + (p ? Math.max(p.skills[SEAT_SKILL[roles[i]!]] - penalty(p), 0) : 0),
+        0,
+      );
+
+    // reference: try every injective assignment (null allowed), no pruning
+    const pool = courtiers.filter((x) => (x.age ?? 99) >= 16 && penalty(x) < 100);
+    let bestRef = 0;
+    const used = new Set<number>();
+    const picks: (CourtierT | null)[] = roles.map(() => null);
+    const go = (i: number) => {
+      if (i === roles.length) {
+        bestRef = Math.max(bestRef, value(picks));
+        return;
+      }
+      for (const x of pool) {
+        if (used.has(x.id)) continue;
+        used.add(x.id);
+        picks[i] = x;
+        go(i + 1);
+        used.delete(x.id);
+      }
+      picks[i] = null;
+      go(i + 1);
+    };
+    go(0);
+
+    expect(value(plan.map((a) => a.suggested))).toBeCloseTo(bestRef, 5);
+    const ids = plan.map((a) => a.suggested?.id).filter((x) => x !== undefined);
+    expect(new Set(ids).size).toBe(ids.length); // nobody holds two seats
+  }
+});

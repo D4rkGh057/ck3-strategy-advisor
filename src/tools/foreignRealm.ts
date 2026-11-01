@@ -54,7 +54,9 @@ export function registerForeignRealmTool(server: McpServer, cache: SnapshotCache
       const snap = await cache.get();
       if ("error" in snap) return { isError: true, content: [{ type: "text", text: snap.error }] };
 
-      const result = await cache.query((q) => extractForeignRealm(q, cache.loc, name));
+      const result = await cache.memoQuery(`foreign_realm:${name}`, (q) =>
+        extractForeignRealm(q, cache.loc, name),
+      );
       if (result !== null && typeof result === "object" && "error" in result) {
         return {
           isError: true,

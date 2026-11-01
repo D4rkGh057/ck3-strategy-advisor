@@ -38,19 +38,25 @@ export function registerCourtiersTool(server: McpServer, cache: SnapshotCache) {
       const snap = await cache.get();
       if ("error" in snap) return { isError: true, content: [{ type: "text", text: snap.error }] };
       const year = Number.parseInt(snap.date, 10);
-      const result = await cache.query((q) => ({
-        pool: extractPool(q, cache.loc, cache.lookup, year, scope ?? "empire"),
+      // Same key and shape as the `council` tool, so the two share one extraction per save.
+      const councilRes = await cache.memoQuery("council", (q) => ({
         council: extractCouncil(
           q,
           cache.loc,
           cache.lookup,
-          year,
+          Number.isFinite(year) ? year : null,
           extractFactions(q, cache.loc).memberIds,
         ),
       }));
-      if ("error" in result)
-        return { isError: true, content: [{ type: "text", text: result.error }] };
-      const { pool, council } = result;
+      if ("error" in councilRes)
+        return { isError: true, content: [{ type: "text", text: councilRes.error }] };
+      const poolRes = await cache.memoQuery(`court_candidates:pool:${scope ?? "empire"}`, (q) => ({
+        pool: extractPool(q, cache.loc, cache.lookup, year, scope ?? "empire"),
+      }));
+      if ("error" in poolRes)
+        return { isError: true, content: [{ type: "text", text: poolRes.error }] };
+      const { council } = councilRes;
+      const { pool } = poolRes;
       if (!pool)
         return { content: [{ type: "text", text: stamp(snap, "Player faith not found.") }] };
 

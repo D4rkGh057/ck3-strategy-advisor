@@ -80,7 +80,9 @@ export function registerCharacterTools(server: McpServer, cache: SnapshotCache) 
       const snap = await cache.get();
       if ("error" in snap) return { isError: true, content: [{ type: "text", text: snap.error }] };
 
-      const result = await cache.query((q) => extractCharacter(q, cache.loc, id, cache.lookup));
+      const result = await cache.memoQuery(`character:${id}`, (q) =>
+        extractCharacter(q, cache.loc, id, cache.lookup),
+      );
       if (result !== null && typeof result === "object" && "error" in result) {
         return {
           isError: true,

@@ -233,7 +233,9 @@ function score(c: Courtier, role: CouncilRole): number {
  * Best one-person-per-seat assignment maximising the sum of each seat's primary
  * skill minus a risk penalty (age, health, opinion, claims on your titles,
  * faction membership, bad traits). Only adults are eligible; anyone with a
- * disqualifying risk is skipped. Exhaustive search is fine: 5 seats.
+ * disqualifying risk is skipped. Exhaustive search over the best few per seat: with 5 seats
+ * an optimal assignment never needs anyone below a seat's top 5 (the other four seats can
+ * block at most four of them), so searching the whole pool (n^5) adds nothing.
  */
 export function suggestCouncil(info: CouncilInfo): Assignment[] {
   const roles = Object.keys(ROLE_SKILL) as CouncilRole[];
@@ -242,11 +244,25 @@ export function suggestCouncil(info: CouncilInfo): Assignment[] {
   );
   const byId = new Map(info.courtiers.map((c) => [c.id, c]));
 
+  // Tiny bonus so ties keep the current holder rather than shuffling for +0.
+  const weight = (c: Courtier, role: CouncilRole) =>
+    Math.max(score(c, role), 0) + (info.seats[role] === c.id ? 0.01 : 0);
+  const contenders = new Set<number>();
+  for (const role of roles)
+    for (const c of [...pool].sort((a, b) => weight(b, role) - weight(a, role)).slice(0, roles.length))
+      contenders.add(c.id);
+  const search = pool.filter((c) => contenders.has(c.id)); // keeps pool order
+
   let best: (Courtier | null)[] = roles.map(() => null);
   let bestScore = -Infinity;
   const pick: (Courtier | null)[] = roles.map(() => null);
   const used = new Set<number>();
+  // Best each remaining seat could add on its own: a branch that cannot beat the best total
+  // found so far is skipped (ties never replaced it anyway, since only `>` does).
+  const ceiling = roles.map((_, i) => Math.max(0, ...search.map((c) => weight(c, roles[i]!))));
+  const ahead = roles.map((_, i) => ceiling.slice(i).reduce((a, b) => a + b, 0));
   const go = (i: number, total: number) => {
+    if (i < roles.length && total + ahead[i]! <= bestScore) return;
     if (i === roles.length) {
       if (total > bestScore) {
         bestScore = total;
@@ -255,12 +271,11 @@ export function suggestCouncil(info: CouncilInfo): Assignment[] {
       return;
     }
     const role = roles[i]!;
-    for (const c of pool) {
+    for (const c of search) {
       if (used.has(c.id)) continue;
       used.add(c.id);
       pick[i] = c;
-      // Tiny bonus so ties keep the current holder rather than shuffling for +0.
-      go(i + 1, total + Math.max(score(c, role), 0) + (info.seats[role] === c.id ? 0.01 : 0));
+      go(i + 1, total + weight(c, role));
       used.delete(c.id);
     }
     pick[i] = null;

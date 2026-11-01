@@ -16,15 +16,17 @@ type ToolResult = { isError?: boolean; content: { type: "text"; text: string }[]
 
 // Shared plumbing for tools that need a fresh jomini pass beyond the snapshot:
 // fetch the snapshot (for stamping), run the extractor, surface errors as text.
+// `key` names the extractor and every argument it depends on: the result is kept per save.
 async function run<T>(
   cache: SnapshotCache,
+  key: string,
   extract: (q: Query) => T,
   render: (data: T) => string,
 ): Promise<ToolResult> {
   const snap = await cache.get();
   if ("error" in snap) return { isError: true, content: [{ type: "text", text: snap.error }] };
   // Wrap so a null/array extractor result can't be confused with cache.query's { error }.
-  const result = await cache.query((q) => ({ data: extract(q) }));
+  const result = await cache.memoQuery(key, (q) => ({ data: extract(q) }));
   if ("error" in result) return { isError: true, content: [{ type: "text", text: result.error }] };
   return { content: [{ type: "text", text: stamp(snap, render(result.data)) }] };
 }
@@ -106,6 +108,7 @@ export function registerExtendedTools(server: McpServer, cache: SnapshotCache) {
     async () =>
       run(
         cache,
+        "alerts",
         (q) => extractAlerts(q, cache.loc),
         (alerts) => {
           if (alerts.length === 0) return "# Alerts\nNothing flagged by the game.";
@@ -137,6 +140,7 @@ export function registerExtendedTools(server: McpServer, cache: SnapshotCache) {
     async () =>
       run(
         cache,
+        "court",
         (q) => extractCourt(q, cache.loc, cache.lookup),
         (c) => {
           let body = `${SKILL_NOTE}\n\n# Council\n`;
@@ -185,6 +189,7 @@ export function registerExtendedTools(server: McpServer, cache: SnapshotCache) {
     async ({ id }: { id?: number }) =>
       run(
         cache,
+        `family:${id ?? ""}`,
         (q) => extractFamily(q, id),
         (f) => {
           if (!f) return `No character with id ${id}.`;
@@ -223,6 +228,7 @@ export function registerExtendedTools(server: McpServer, cache: SnapshotCache) {
     async () =>
       run(
         cache,
+        "domain",
         (q) => extractDomain(q, cache.loc, cache.game),
         (d) => {
           let body = `# Domain — ${d.holdingCount}/${d.domainLimit ?? "?"} holdings\n`;
@@ -256,6 +262,7 @@ export function registerExtendedTools(server: McpServer, cache: SnapshotCache) {
     async () =>
       run(
         cache,
+        "intrigue",
         (q) => extractIntrigue(q, cache.loc),
         (i) => {
           let body = `# Secrets you know (${i.knownSecrets.length})\n`;
@@ -332,6 +339,7 @@ export function registerExtendedTools(server: McpServer, cache: SnapshotCache) {
     }) =>
       run(
         cache,
+        `marriage_candidates:${JSON.stringify(args)}`,
         (q) => extractMarriageCandidates(q, cache.loc, cache.lookup, args),
         (m) => {
           if (!m) return `No character with id ${args.id}.`;
