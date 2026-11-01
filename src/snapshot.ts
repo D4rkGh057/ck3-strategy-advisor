@@ -27,7 +27,7 @@ export interface RealmOverview {
   prestigeLifetime: number | null;
   piety: number | null;
   age: number | null;
-  /** Monthly gold income and net balance after expenses. */
+  /** Gross monthly gold income. `balance` is NOT net of expenses (it can exceed income); unused in output. */
   income: number | null;
   balance: number | null;
   legitimacy: number | null;

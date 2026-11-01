@@ -27,6 +27,7 @@ Cap the follow-ups at 4 calls.
 ${topic ? `\nExtra focus requested by the player: "${topic}". Weigh it first, but still surface any critical risk.\n` : ""}
 ## Honesty limits (hard rules)
 The save does NOT store per-character men-at-arms, strong/weak claims, or computed opinion totals. Never state them as fact. If a recommendation depends on something the tools do not expose (faith rules, secrets, relationships, council desires), say it must be checked in-game.
+Monthly income from the tools is GROSS: monthly expenses are not in the save, so never report it as net gold per month. Say the net must be read in-game.
 Cite the figure behind every claim. If the data is ambiguous, say so instead of guessing.`;
 }
 
