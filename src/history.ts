@@ -49,6 +49,8 @@ export function entryFromSnapshot(snap: Snapshot): HistoryEntry {
  * overlapping timers but never deletes the later tail.
  */
 export class HistoryStore {
+  private queues = new Map<string, Promise<void>>();
+
   constructor(private dir: string) {}
 
   private file(id: string): string {
@@ -68,13 +70,24 @@ export class HistoryStore {
     const { id, timer } = snap.playthrough;
     // Ids become file names, so accept only the UUID shape the game writes.
     if (!id || timer === null || !/^[0-9a-f-]{8,64}$/i.test(id)) return;
-    const entries = (await this.read(id)).filter((e) => e.timer !== timer);
-    entries.push(entryFromSnapshot(snap));
-    entries.sort((a, b) => a.timer - b.timer);
-    await mkdir(this.dir, { recursive: true });
-    const tmp = `${this.file(id)}.tmp`;
-    await writeFile(tmp, JSON.stringify(entries));
-    await rename(tmp, this.file(id));
+    // Serialize read-modify-write per playthrough so concurrent records don't clobber each other.
+    const prev = this.queues.get(id) ?? Promise.resolve();
+    const run = prev.catch(() => {}).then(async () => {
+      const entries = (await this.read(id)).filter((e) => e.timer !== timer);
+      entries.push(entryFromSnapshot(snap));
+      entries.sort((a, b) => a.timer - b.timer);
+      await mkdir(this.dir, { recursive: true });
+      const tmp = `${this.file(id)}.${process.pid}.${Date.now()}.tmp`;
+      await writeFile(tmp, JSON.stringify(entries));
+      await rename(tmp, this.file(id));
+    });
+    const tail = run.catch(() => {});
+    this.queues.set(id, tail);
+    try {
+      await run;
+    } finally {
+      if (this.queues.get(id) === tail) this.queues.delete(id);
+    }
   }
 }
 
