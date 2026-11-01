@@ -30,7 +30,7 @@ These field mappings were verified through jomini against two real text saves: E
 | `/living/{player}/skill` | array | Skill values in order: diplomacy, martial, stewardship, intrigue, learning, prowess | `[7, 9, 10, 7, 6, 7]` |
 | `/living/{player}/prowess_age` | number | Age-based prowess modifier (negative = penalty from aging) | `-11` |
 | `/living/{player}/alive_data/gold/value` | number | Current gold (treasury). NB: `gold` is an object `{ value }`, not a bare number — read `/value` | `2974.7568` |
-| `/living/{player}/alive_data/income` | number | Monthly income | `524.29583` |
+| `/living/{player}/alive_data/income` | number | Gross monthly income (before expenses such as unrecruited men-at-arms, court positions, amenities; those are not stored) | `524.29583` |
 | `/living/{player}/alive_data/stress` | number | Current stress level (integer) | `55` |
 | `/living/{player}/alive_data/health` | number | Current health value | `2.39453` |
 | `/living/{player}/alive_data/fertility` | number | Fertility value (0–1 range) | `0.56995` |
@@ -53,7 +53,7 @@ These field mappings were verified through jomini against two real text saves: E
 | `/living/{player}/landed_data/vassal_limit` | number | Maximum number of direct vassals allowed | `92` |
 | `/living/{player}/landed_data/laws` | array | Array of active realm law string keys | `["crown_authority_3", "single_heir_succession_law", "male_preference_law"]` |
 | `/living/{player}/landed_data/succession` | array | Ordered succession list of character IDs; index 0 is the first heir only under single_heir_succession_law (NOT verified for partition laws; use `playable_data/diarchy_successor` for the designated heir) | `[198957, 209183, 50523480, ...]` |
-| `/living/{player}/landed_data/balance` | number | Net monthly income balance (income minus expenses) | `346.06462` |
+| `/living/{player}/landed_data/balance` | number | Meaning unverified. NOT net income: a real save had `balance` 23.67 > `alive_data/income` 22.96 while the game showed +17.4 net (22.0 income - 4.5 expenses). Do not present it as net. | `346.06462` |
 | `/living/{player}/landed_data/became_ruler_date` | Date | Date the player character became a ruler | `Date(1413-12-14)` |
 | `/living/{player}/landed_data/last_war_finish_date` | Date | Date of the most recently concluded war | `Date(1449-12-22)` |
 | `/living/{player}/playable_data/knights` | array | Array of knight character IDs serving the player | `[186788, 196089, 16931165, ...]` |

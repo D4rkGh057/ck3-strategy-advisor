@@ -34,6 +34,10 @@ describe("ck3-turn-review prompt", () => {
     expect(text).not.toContain("Extra focus");
   });
 
+  test("warns that monthly income is gross, not net", () => {
+    expect(turnReviewText()).toContain("GROSS");
+  });
+
   test("focus is injected only when given", () => {
     expect(turnReviewText("my heir")).toContain('"my heir"');
     expect(turnReviewText("   ")).not.toContain("Extra focus");

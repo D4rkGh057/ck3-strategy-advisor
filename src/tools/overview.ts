@@ -12,7 +12,7 @@ export function registerOverview(server: McpServer, cache: SnapshotCache) {
     {
       title: "Realm Overview",
       description:
-        "Snapshot of the player's ruler and realm: name, age, primary title & tier, house, gold, monthly income/balance, " +
+        "Snapshot of the player's ruler and realm: name, age, primary title & tier, house, gold, gross monthly income (expenses are not in the save), " +
         "spendable prestige (plus lifetime), piety, legitimacy, marital status, government, realm laws, and domain/vassal " +
         "limits, plus the in-game date. Start here for 'what's my situation', then `alerts` for what the game is " +
         "nudging you to do. For military/wars use `military`; for heirs use `succession`.",
@@ -26,7 +26,7 @@ export function registerOverview(server: McpServer, cache: SnapshotCache) {
       const lines = [
         `# ${o.rulerName} — ${o.primaryTitle} (tier ${o.tier})`,
         `- House: ${o.house} | Age: ${o.age ?? "?"} | ${o.spouses > 0 ? `Married (${o.spouses} spouse${o.spouses > 1 ? "s" : ""})` : "Unmarried"}`,
-        `- Gold: ${fmt(o.gold)} | Income: ${fmt(o.income, 2)}/month | Balance: ${fmt(o.balance, 2)}/month`,
+        `- Gold: ${fmt(o.gold)} | Gross income: ${fmt(o.income, 2)}/month (before expenses; the save does not store the net figure, check it in-game)`,
         `- Prestige: ${fmt(o.prestige)} (lifetime ${fmt(o.prestigeLifetime)}) | Piety: ${fmt(o.piety)} | Legitimacy: ${fmt(o.legitimacy)}`,
         `- Holdings: ${o.holdings}/${o.domainLimit ?? "?"} domain limit | Vassals counting toward limit: ${o.vassalsTowardsLimit ?? "?"}/${o.vassalLimit ?? "?"} (the game's own count; see \`vassals\` for all direct vassals)`,
       ];
