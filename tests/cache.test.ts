@@ -40,3 +40,54 @@ test("concurrent cold-cache gets coalesce into a single build (same object refer
   const [a, b, c] = await Promise.all([cache.get(), cache.get(), cache.get()]);
   expect(a === b && b === c).toBe(true); // single build shared across all three callers
 });
+
+function memoCache(mtime: number) {
+  const dir = mkdtempSync(join(tmpdir(), "ck3-"));
+  const file = join(dir, "game.ck3");
+  writeFileSync(file, makeTextEnvelope(GS));
+  utimesSync(file, new Date(mtime), new Date(mtime));
+  const cache = new SnapshotCache(new SaveFileSource({ saveDir: dir }), new Localizer(null));
+  return { cache, file };
+}
+
+test("memoQuery runs the extractor once per key, shares concurrent callers, and keys apart", async () => {
+  const { cache } = memoCache(1000);
+  let runs = 0;
+  const fn = () => ({ n: ++runs });
+  const [a, b] = await Promise.all([cache.memoQuery("k", fn), cache.memoQuery("k", fn)]);
+  const c = await cache.memoQuery("k", fn);
+  expect(a).toBe(b);
+  expect(c).toBe(a);
+  expect(runs).toBe(1);
+  await cache.memoQuery("other", fn);
+  expect(runs).toBe(2);
+});
+
+test("memoQuery results are dropped when a newer save is read", async () => {
+  const { cache, file } = memoCache(1000);
+  let runs = 0;
+  const fn = () => ({ n: ++runs });
+  const first = await cache.memoQuery("k", fn);
+  utimesSync(file, new Date(2000), new Date(2000));
+  const second = await cache.memoQuery("k", fn);
+  expect(runs).toBe(2);
+  expect(second).not.toBe(first);
+});
+
+test("memoQuery does not keep a failed run", async () => {
+  const { cache } = memoCache(1000);
+  let runs = 0;
+  const boom = () => {
+    runs++;
+    throw new Error("boom");
+  };
+  await expect(cache.memoQuery("k", boom)).rejects.toThrow("boom");
+  await expect(cache.memoQuery("k", boom)).rejects.toThrow("boom");
+  expect(runs).toBe(2);
+});
+
+test("memoQuery surfaces a missing save as { error } without caching it", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "ck3-"));
+  const cache = new SnapshotCache(new SaveFileSource({ saveDir: dir }), new Localizer(null));
+  expect("error" in ((await cache.memoQuery("k", () => 1)) as object)).toBe(true);
+});

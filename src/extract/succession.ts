@@ -1,4 +1,5 @@
 import type { Query } from "../parser.js";
+import { fullName } from "./names.js";
 import type { Localizer } from "../localization.js";
 import { resolveTitleName } from "./titleUtils.js";
 
@@ -11,6 +12,8 @@ export interface SuccessionInfo {
   primaryTitleId: number | null;
   successionLaw: string;
   genderLaw: string;
+  /** Game-designated heir (playable_data/diarchy_successor); null when absent. */
+  designatedHeir: HeirRef | null;
   heirs: HeirRef[];
   totalHeirs: number;
   claimants: HeirRef[];
@@ -20,8 +23,8 @@ export interface SuccessionInfo {
 const HEIR_CAP = 6;
 const CLAIMANT_CAP = 6;
 
-function resolveCharName(q: Query, id: number): string {
-  return String(q.at(`/living/${id}/first_name`) ?? "unknown");
+function resolveCharName(q: Query, loc: Localizer, id: number): string {
+  return fullName(q, loc, id);
 }
 
 export function extractSuccession(q: Query, loc: Localizer): SuccessionInfo {
@@ -47,8 +50,18 @@ export function extractSuccession(q: Query, loc: Localizer): SuccessionInfo {
   const totalHeirs = successionIds.length;
   const heirs: HeirRef[] = successionIds.slice(0, HEIR_CAP).map((id) => ({
     id,
-    name: resolveCharName(q, id),
+    name: resolveCharName(q, loc, id),
   }));
+
+  // Designated heir: the character the game shows as heir. Under partition laws
+  // the order of landed_data/succession is NOT this.
+  const designatedId = q.at(`/living/${playerId}/playable_data/diarchy_successor`) as
+    | number
+    | undefined;
+  const designatedHeir: HeirRef | null =
+    typeof designatedId === "number"
+      ? { id: designatedId, name: resolveCharName(q, loc, designatedId) }
+      : null;
 
   // Resolve law strings through localizer (echoes raw key when no game dir)
   const resolvedSuccessionLaw = loc.resolve(successionLaw);
@@ -63,7 +76,7 @@ export function extractSuccession(q: Query, loc: Localizer): SuccessionInfo {
   const totalClaimants = claimantIds.length;
   const claimants: HeirRef[] = claimantIds.slice(0, CLAIMANT_CAP).map((id) => ({
     id,
-    name: resolveCharName(q, id),
+    name: resolveCharName(q, loc, id),
   }));
 
   return {
@@ -71,6 +84,7 @@ export function extractSuccession(q: Query, loc: Localizer): SuccessionInfo {
     primaryTitleId,
     successionLaw: resolvedSuccessionLaw,
     genderLaw: resolvedGenderLaw,
+    designatedHeir,
     heirs,
     totalHeirs,
     claimants,

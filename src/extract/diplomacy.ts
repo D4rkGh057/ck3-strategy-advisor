@@ -1,7 +1,9 @@
 import type { Query } from "../parser.js";
+import { fullName } from "./names.js";
 import type { Localizer } from "../localization.js";
 import { formatCk3Date } from "../format.js";
 import { forEachRelation } from "./scan.js";
+import { sumTemporaryOpinion } from "./opinion.js";
 
 export interface DipRef {
   id: number;
@@ -27,8 +29,8 @@ export interface DiplomacyInfo {
 
 const HOSTILE_CAP = 5;
 
-function resolveCharName(q: Query, id: number): string {
-  return String(q.at(`/living/${id}/first_name`) ?? "unknown");
+function resolveCharName(q: Query, loc: Localizer, id: number): string {
+  return fullName(q, loc, id);
 }
 
 export function extractDiplomacy(q: Query, loc: Localizer): DiplomacyInfo {
@@ -49,7 +51,7 @@ export function extractDiplomacy(q: Query, loc: Localizer): DiplomacyInfo {
   forEachRelation(q, playerId, (otherId, entry) => {
     // Alliance
     if (entry["alliances"] != null) {
-      alliances.push({ id: otherId, name: resolveCharName(q, otherId) });
+      alliances.push({ id: otherId, name: resolveCharName(q, loc, otherId) });
     }
     // Truces — emit at most ONE per relation entry (prefer truce_0, fall back to truce_1)
     const truceSlot =
@@ -58,7 +60,7 @@ export function extractDiplomacy(q: Query, loc: Localizer): DiplomacyInfo {
     if (truceSlot && typeof truceSlot === "object") {
       truces.push({
         id: otherId,
-        name: resolveCharName(q, otherId),
+        name: resolveCharName(q, loc, otherId),
         until: formatCk3Date(truceSlot["date"]),
         result: typeof truceSlot["result"] === "string" ? truceSlot["result"] : "?",
       });
@@ -75,9 +77,8 @@ export function extractDiplomacy(q: Query, loc: Localizer): DiplomacyInfo {
     if ((entry["target"] as number | undefined) !== playerId) continue;
     const owner = entry["owner"] as number | undefined;
     if (typeof owner !== "number") continue;
-    const tempOpinion = entry["temporary_opinion"] as Record<string, unknown> | undefined;
-    const value = tempOpinion?.["value"];
-    if (typeof value !== "number") continue;
+    const value = sumTemporaryOpinion(entry["temporary_opinion"]);
+    if (value === null) continue;
     opinionMap.set(owner, (opinionMap.get(owner) ?? 0) + value);
   }
 
@@ -86,7 +87,7 @@ export function extractDiplomacy(q: Query, loc: Localizer): DiplomacyInfo {
     .filter(([, opinion]) => opinion < 0)
     .sort(([, a], [, b]) => a - b)
     .slice(0, HOSTILE_CAP)
-    .map(([id, opinion]) => ({ id, name: resolveCharName(q, id), opinion }));
+    .map(([id, opinion]) => ({ id, name: resolveCharName(q, loc, id), opinion }));
 
   return { independent, alliances, truces, hostile };
 }

@@ -52,7 +52,7 @@ These field mappings were verified through jomini against two real text saves: E
 | `/living/{player}/landed_data/domain_limit` | number | Maximum number of holdings the player can hold directly | `11` |
 | `/living/{player}/landed_data/vassal_limit` | number | Maximum number of direct vassals allowed | `92` |
 | `/living/{player}/landed_data/laws` | array | Array of active realm law string keys | `["crown_authority_3", "single_heir_succession_law", "male_preference_law"]` |
-| `/living/{player}/landed_data/succession` | array | Ordered succession list of character IDs; index 0 is primary heir | `[198957, 209183, 50523480, ...]` |
+| `/living/{player}/landed_data/succession` | array | Ordered succession list of character IDs; index 0 is the first heir only under single_heir_succession_law (NOT verified for partition laws; use `playable_data/diarchy_successor` for the designated heir) | `[198957, 209183, 50523480, ...]` |
 | `/living/{player}/landed_data/balance` | number | Net monthly income balance (income minus expenses) | `346.06462` |
 | `/living/{player}/landed_data/became_ruler_date` | Date | Date the player character became a ruler | `Date(1413-12-14)` |
 | `/living/{player}/landed_data/last_war_finish_date` | Date | Date of the most recently concluded war | `Date(1449-12-22)` |
@@ -210,12 +210,12 @@ These field mappings were verified through jomini against two real text saves: E
 
 ## succession-claims
 
-**Player-relative recipe:** (1) Succession laws: `/living/{player}/landed_data/laws` — string array; find element matching `*_succession_law` for law type, `*_law` for gender preference. (2) Heir order: `/living/{player}/landed_data/succession` — number array; index 0 is primary heir. (3) Player's own claims: `/living/{player}/alive_data/claim` — array of `{title, pressed?: true}`; check `.pressed`. (4) Active pretender titles: `/living/{player}/alive_data/pretender` — number array of title IDs (absent if none). (5) To find the player's primary title block: iterate `/landed_titles/landed_titles`, find entry where `.holder === {player}` and `.key` starts with `e_` (or highest tier held); then use that entry's `heir` (ordered heirs) and `claim` (claimant character IDs) arrays.
+**Player-relative recipe:** (1) Succession laws: `/living/{player}/landed_data/laws` — string array; find element matching `*_succession_law` for law type, `*_law` for gender preference. (2) Heir order: `/living/{player}/landed_data/succession` — number array; index 0 is the first heir only under single-heir laws. (2b) Designated heir: `/living/{player}/playable_data/diarchy_successor` — number (verified through jomini; matches the in-game heir under confederate_partition_succession_law). (3) Player's own claims: `/living/{player}/alive_data/claim` — array of `{title, pressed?: true}`; check `.pressed`. (4) Active pretender titles: `/living/{player}/alive_data/pretender` — number array of title IDs (absent if none). (5) To find the player's primary title block: iterate `/landed_titles/landed_titles`, find entry where `.holder === {player}` and `.key` starts with `e_` (or highest tier held); then use that entry's `heir` (ordered heirs) and `claim` (claimant character IDs) arrays.
 
 | Path | jomini type | Meaning | Example |
 |------|-------------|---------|---------|
 | `/living/{player}/landed_data/laws` | array | Active succession laws for the player's primary realm; includes succession type and gender law | `["crown_authority_3", "single_heir_succession_law", "male_preference_law"]` |
-| `/living/{player}/landed_data/succession` | array | Ordered heir priority queue for the player's primary title; index 0 is primary heir | `[198957, 209183, 50523480, ...]` |
+| `/living/{player}/landed_data/succession` | array | Ordered heir priority queue for the player's primary title; index 0 is the first heir only under single-heir laws; not the designated heir under partition laws | `[198957, 209183, 50523480, ...]` |
 | `/living/{player}/alive_data/claim` | array | Claims the player holds on other titles; each: `{title: number, pressed?: true}` | `[{title: 7230}, {title: 938}]` |
 | `/living/{id}/alive_data/claim` | array | Claims held by any living character; same schema as player; `pressed: true` indicates active pressing | `[{title: 4629, pressed: true}, {title: 5268}]` |
 | `/living/{id}/alive_data/pretender` | array | Title IDs the character is actively contesting (e.g. in a faction or claimant war); absent if none | `[4355, 4356, 4361]` |
@@ -238,6 +238,7 @@ These field mappings were verified through jomini against two real text saves: E
 ## ADDENDUM: gaps resolved for Tasks 10 & 13 (controller-verified)
 
 ### Men-at-arms (Task 10)
+_Superseded for 1.20 — see the 1.20 addendum at the end._
 There is NO clean per-character men-at-arms breakdown in the gamestate.
 `/living/{player}/landed_data/men_at_arms` = undefined; the raw `men_at_arms={ gold=... }`
 inside the player block is upkeep cost only. Regiments live in the global `/armies`
@@ -248,14 +249,42 @@ states MAA is not broken out. Do not fabricate an MAA breakdown.**
 
 ### Vassal enumeration (Task 13)
 - Player's direct vassal contracts: `/living/{player}/landed_data/vassal_contracts` = array of contract IDs (e.g. 56 entries).
-- Resolve each: `/vassal_contracts/active/{contractId}` -> object `{ vassal: <charId>, liege: <charId>, date: Date, levels: int[] }`. `vassal` is the vassal character id; `liege` should equal the player.
-- `/vassal_contracts/active` is an object keyed by contract id (numeric-string keys).
+- Resolve each: `/vassal_contracts/database/{contractId}` -> object `{ vassal: <charId>, liege: <charId>, date: Date, levels: int[], contract_group: string }`. `vassal` is the vassal character id; `liege` should equal the player.
+- `/vassal_contracts/database` is an object keyed by contract id (numeric-string keys, ~10k entries, sparse: unused slots are the string `"none"`). **`/vassal_contracts/active` does NOT exist** (verified against a 1118 save; an earlier version of this doc was wrong).
 - Rank vassals by `/living/{vassalId}/landed_data/strength_for_liege` (number; troops the vassal owes the liege). Fallback `/living/{vassalId}/landed_data/strength`.
 - Vassal opinion OF player: single pass over `/opinions/active_opinions` (array ~85k–95k), keep entries where `owner === vassalId && target === {player}`, sum `temporary_opinion.value` (+ any base). Only scan once; keep only matches for the top-N vassals.
 - Council seat: vassalId present in `/living/{player}/landed_data/council`.
 - Faction membership: vassalId present in any `/faction_manager/factions/{id}/members[*].character` where that faction's `target === {player}`.
 
 ### Scoped-out / stated-limitation features
-- **Marriage candidates (Task 12):** NOT mapped in the gamestate — scope OUT; the plan hedges "if cheaply available".
+- **Marriage candidates (Task 12):** not stored in the gamestate; rebuilt in `extract/marriage.ts` from the game's `arrange_marriage_interaction` / `can_marry_character_trigger` (see the 1.20 addendum).
 - **Strong vs weak claims (Task 14):** NOT stored. Report claims as pressed/unpressed only (from `alive_data/claim[*].pressed`), and say so in the tool description.
 - **Character name search (Task 9 find_character):** `first_name` is CK3 loc-encoded (e.g. "CrI_chA_n" for Críchán) and the game dir may be null, so display-name search is BEST-EFFORT substring over the raw + resolved name. Document this limitation in the tool description.
+
+---
+
+## ADDENDUM: CK3 1.20 (verified against a real 1.20.0.2 save)
+
+Corrections to the sections above:
+
+- **Vassal contracts** moved to `/vassal_contracts/database/{contractId}` (vacated slots are the string `none`). `/vassal_contracts/active` no longer exists. `extract/common.ts#vassalContract` tries `database` then `active`.
+- **Council:** `/living/{player}/landed_data/council` holds council *task* ids, not character ids. Resolve each through `/council_task_manager/active/{taskId}` → `{ type: "task_collect_taxes", owner: <charId>, court_owner: <player> }` (`extract/common.ts#councilSeats`).
+- **Prestige/piety:** `alive_data/prestige` = `{ currency, accumulated }` where `currency` is the spendable amount the UI shows; piety often has only `currency`. Read `currency` first.
+- **Men-at-arms ARE stored per owner:** `/armies/regiments/{id}` = `{ type: "light_footmen", size: 200, owner: <charId>, origin?: <provinceId> }`. Entries without `type` are levy/garrison chunks. `origin` is the province the regiment is stationed in (absent = unstationed).
+- **Title names:** current names live at `/landed_titles/landed_titles/{id}/title_name_data/name` (cultural names such as "Luimneach" for `b_limerick`); history entries there hold raw keys.
+- **CK3_GAME_DIR** may be the install root; localization lives under `<root>/game/localization`. `gameData.ts#resolveGameRoot` accepts both.
+- **Trait localization** is keyed `trait_<id>` in the game files (`trait_arrogant`), not the bare `traits_lookup` identifier.
+- **Skills are base values.** `/living/{id}/skill` (diplomacy, martial, stewardship, intrigue, learning, prowess) excludes trait modifiers; the game adds them (and perks, artifacts, temporary modifiers) at runtime and does not store the total. Verified: a character with Eccentric (+2 learning, −2 diplomacy in `common/traits`) has saved learning 10 and shows 12 in game.
+- **Trait XP:** `/living/{id}/trait_xp_amounts` lists the XP of the character's *tracked* traits (those with a `track = { <xp> = { ... } }` block, e.g. `lifestyle_reveler`), in the order they appear in `traits`. `extract/skills.ts` only applies it when the count matches the number of tracked traits.
+
+New sections used by the 1.20 tools:
+
+- **Important actions** (`alerts`, `expansion` CB targets): `/important_action_manager/active/{n}` = `{ important_action_type, character: <who it is for>, scope: { event_targets: { actor: {type:"char",identity}, recipient?: {type:"char"|"title",identity} } }, visible }`. Loc key = the type (`action_adult_ruler_not_married`), with `[concept|E]` and `@icon!` markup.
+- **Court positions:** `/court_positions/database/{n}` = `{ court_position: "court_physician_court_position", employee, employer, hire_date }`.
+- **Courtiers:** `/living/{id}/court_data/employer`. **Knights:** `/living/{player}/playable_data/knights`. **Legitimacy:** `/living/{player}/playable_data/legitimacy`.
+- **Family:** only parent→child links are stored (`family_data.child`, plus `spouse`, `primary_spouse`, `former_spouses`, `betrothed`). Parents must be found by inverting `child` across `/living` and `/dead_unprunable` (dead entries can come back from jomini as a duplicated `[obj, obj]` pair). Gender: top-level `female=yes`. Age: `birth` vs `/date`.
+- **Domain:** counties at `/county_manager/counties/{countyKey}` (keyed by key, e.g. `c_thomond`) = `{ development, county_control, culture, rite }`. Holdings at `/provinces/{provinceId}/holding` = `{ type, buildings: [{type}|{} empty slot], levy, garrison, income }` + `fort_level`. The barony→province id link is NOT in the save — read `b_xxx = { province = N }` from the game's `common/landed_titles/*.txt` (`gameData.ts`).
+- **Culture name:** `/culture_manager/cultures/{id}/name`.
+- **Secrets:** `/secrets/secrets/{id}` = `{ type, owner, target?: {type:"char",identity}, participants }`; `/secrets/known_secrets` = array of `{ secret: <id>, owner: <character who knows it> }`.
+- **Hooks:** in `/relations/active_relations` entries, `active_hook_0` is held by `first` over `second`, `active_hook_1` by `second` over `first`.
+- **Rites (faith) and marriage:** a character's `rite` is an id into `/rites/database/{id}` = `{ rite_type, faith, data: { name, tag, doctrines… } }`; each `doctrine=doctrine_x` line is repeated under it (jomini returns an array under `doctrine`). Consanguinity doctrines decide which kin may marry. The game's arrange-marriage list per ruler is the ruler, `every_courtier`/`every_courtier_away` (`court_data.employer`) and `every_child`, filtered by `can_marry_character_trigger`. A ruler is anyone with `landed_data.domain`. Pool characters (`alive_data.pool_history`) have no employer and appear in no list until invited. `can_not_marry` is a trait flag (eunuchs, `devoted`, `order_member`).

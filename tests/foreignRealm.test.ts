@@ -23,7 +23,7 @@ describe("extractForeignRealm — matching & core", () => {
       name: "Causantin",
       martial: 7,
       gold: 88,
-      prestige: 500,
+      prestige: 200, // spendable `currency`, not lifetime `accumulated`
     });
     expect(r!.strength).toBe(6000);
     expect(r!.currentStrength).toBe(5500);
@@ -127,7 +127,12 @@ describe("foreign_realm tool", () => {
 
   it("returns a stamped no-match line when nothing matches", async () => {
     const snap = { date: "1130-07-24", parsedAt: Date.now() } as any;
-    const cache = { get: async () => snap, query: async () => null, loc: null } as any;
+    const cache = {
+      get: async () => snap,
+      query: async () => null,
+      memoQuery: async () => null,
+      loc: null,
+    } as any;
     let handler: any;
     const server = {
       registerTool: (_n: string, _c: any, h: any) => {

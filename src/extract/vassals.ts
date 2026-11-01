@@ -1,5 +1,8 @@
 import type { Query } from "../parser.js";
 import type { Localizer } from "../localization.js";
+import { councilSeats, vassalContract } from "./common.js";
+import { sumTemporaryOpinion } from "./opinion.js";
+import { fullName } from "./names.js";
 
 export interface FactionInfo {
   type: string;
@@ -63,8 +66,7 @@ export function extractFactions(
     const leaderId = f["leader"];
     let leaderName: string | null = null;
     if (typeof leaderId === "number") {
-      const raw = q.at(`/living/${leaderId}/first_name`);
-      leaderName = typeof raw === "string" ? raw : null;
+      leaderName = fullName(q, loc, leaderId) || null;
     }
 
     factions.push({
@@ -98,8 +100,8 @@ export function extractVassals(
   type VassalEntry = { id: number; strength: number };
   const entries: VassalEntry[] = [];
   for (const cid of contractIds) {
-    const contract = q.at(`/vassal_contracts/active/${cid}`) as Record<string, unknown> | undefined;
-    if (!contract || typeof contract !== "object") continue;
+    const contract = vassalContract(q, cid);
+    if (!contract) continue;
     const vassalId = contract["vassal"];
     if (typeof vassalId !== "number") continue;
 
@@ -121,8 +123,7 @@ export function extractVassals(
   const topIds = new Set(topEntries.map((e) => e.id));
 
   // 4. Council seat set
-  const council = (q.at(`/living/${playerId}/landed_data/council`) as number[] | undefined) ?? [];
-  const councilSet = new Set(council);
+  const councilSet = new Set(councilSeats(q, playerId).map((s) => s.memberId));
 
   // 5. Single pass over active_opinions — accumulate only for topN vassals targeting player
   const activeOpinions =
@@ -133,16 +134,14 @@ export function extractVassals(
     if ((entry["target"] as number | undefined) !== playerId) continue;
     const owner = entry["owner"] as number | undefined;
     if (typeof owner !== "number" || !topIds.has(owner)) continue;
-    const tempOpinion = entry["temporary_opinion"] as Record<string, unknown> | undefined;
-    const value = tempOpinion?.["value"];
-    if (typeof value !== "number") continue;
+    const value = sumTemporaryOpinion(entry["temporary_opinion"]);
+    if (value === null) continue;
     opinionMap.set(owner, (opinionMap.get(owner) ?? 0) + value);
   }
 
   // 6. Build final vassal list
   const vassals = topEntries.map(({ id, strength }) => {
-    const raw = q.at(`/living/${id}/first_name`);
-    const name = typeof raw === "string" ? raw : String(raw ?? id);
+    const name = fullName(q, loc, id);
     return {
       id,
       name,
