@@ -105,7 +105,7 @@ export function renderHistory(entries: HistoryEntry[], limit: number): string {
   const last = entries[entries.length - 1]!;
   let body =
     `# Playthrough history — ${entries.length} point${entries.length === 1 ? "" : "s"}\n\n` +
-    "| Date | Ruler | Gold | Lifetime prestige | Piety | Income/mo | Strength | Titles | Vassals |\n" +
+    "| Date | Ruler | Gold | Lifetime prestige | Piety | Income/mo | Strength | Titles | Direct vassals |\n" +
     "| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n" +
     rows.join("\n");
   if (shown.length < entries.length) body += `\n\n_Showing ${shown.length} of ${entries.length}._`;

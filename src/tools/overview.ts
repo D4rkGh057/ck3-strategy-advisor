@@ -28,7 +28,7 @@ export function registerOverview(server: McpServer, cache: SnapshotCache) {
         `- House: ${o.house} | Age: ${o.age ?? "?"} | ${o.spouses > 0 ? `Married (${o.spouses} spouse${o.spouses > 1 ? "s" : ""})` : "Unmarried"}`,
         `- Gold: ${fmt(o.gold)} | Income: ${fmt(o.income, 2)}/month | Balance: ${fmt(o.balance, 2)}/month`,
         `- Prestige: ${fmt(o.prestige)} (lifetime ${fmt(o.prestigeLifetime)}) | Piety: ${fmt(o.piety)} | Legitimacy: ${fmt(o.legitimacy)}`,
-        `- Holdings: ${o.holdings}/${o.domainLimit ?? "?"} domain limit | Vassals: ${o.vassalsTowardsLimit ?? "?"}/${o.vassalLimit ?? "?"} vassal limit`,
+        `- Holdings: ${o.holdings}/${o.domainLimit ?? "?"} domain limit | Vassals counting toward limit: ${o.vassalsTowardsLimit ?? "?"}/${o.vassalLimit ?? "?"} (the game's own count; see \`vassals\` for all direct vassals)`,
       ];
       if (o.government) lines.push(`- Government: ${cache.loc.resolve(o.government)}`);
       if (o.laws.length > 0) lines.push(`- Laws: ${o.laws.join(", ")}`);

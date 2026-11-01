@@ -64,6 +64,8 @@ test("renderHistory shows a table with first-to-last deltas", async () => {
   expect(out).toContain("1130.7.24");
   expect(out).toContain("1135.1.1");
   expect(out).toContain("+75.5"); // gold delta
+  // `vassals` here counts every direct vassal, unlike realm_overview's "counting toward limit"
+  expect(out).toContain("| Direct vassals |");
 });
 
 test("renderHistory down-samples to the limit keeping first and last", async () => {
