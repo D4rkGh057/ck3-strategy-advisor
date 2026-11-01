@@ -3,6 +3,7 @@ import { fullName } from "./names.js";
 import type { Localizer } from "../localization.js";
 import { formatCk3Date } from "../format.js";
 import { forEachRelation } from "./scan.js";
+import { sumTemporaryOpinion } from "./opinion.js";
 
 export interface DipRef {
   id: number;
@@ -76,9 +77,8 @@ export function extractDiplomacy(q: Query, loc: Localizer): DiplomacyInfo {
     if ((entry["target"] as number | undefined) !== playerId) continue;
     const owner = entry["owner"] as number | undefined;
     if (typeof owner !== "number") continue;
-    const tempOpinion = entry["temporary_opinion"] as Record<string, unknown> | undefined;
-    const value = tempOpinion?.["value"];
-    if (typeof value !== "number") continue;
+    const value = sumTemporaryOpinion(entry["temporary_opinion"]);
+    if (value === null) continue;
     opinionMap.set(owner, (opinionMap.get(owner) ?? 0) + value);
   }
 
