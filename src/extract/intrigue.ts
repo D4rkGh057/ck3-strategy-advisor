@@ -57,12 +57,17 @@ export function extractIntrigue(q: Query, loc: Localizer): IntrigueInfo {
   const knownSecrets: SecretRef[] = [];
   const ownSecrets: IntrigueInfo["ownSecrets"] = [];
   for (const sid of Object.keys(secrets)) {
+    // Decide relevance from raw ids first: building a ref resolves character names, which is
+    // slow, and the save holds thousands of secrets that are none of the player's business.
+    const owner = (secrets[sid] as Record<string, unknown> | undefined)?.["owner"];
+    if (typeof owner !== "number") continue;
+    const who = knowers.get(sid) ?? [];
+    const own = owner === playerId;
+    if (!own && !who.includes(playerId)) continue;
     const ref = secretRef(sid);
     if (!ref) continue;
-    const who = knowers.get(sid) ?? [];
-    if (ref.ownerId === playerId)
-      ownSecrets.push({ ...ref, knownBy: who.filter((w) => w !== playerId).length });
-    else if (who.includes(playerId)) knownSecrets.push(ref);
+    if (own) ownSecrets.push({ ...ref, knownBy: who.filter((w) => w !== playerId).length });
+    else knownSecrets.push(ref);
   }
 
   // active_hook_0 is held by `first` over `second`; active_hook_1 the reverse.
