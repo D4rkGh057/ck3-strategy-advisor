@@ -21,7 +21,7 @@ export interface ExpansionInfo {
 
 // Walk a title's de facto liege chain: it is inside the player's realm if any
 // title on the chain is held by the player.
-function inRealm(q: Query, playerId: number, titleId: number): boolean {
+export function inRealm(q: Query, playerId: number, titleId: number): boolean {
   let id: unknown = titleId;
   for (let depth = 0; depth < 8 && typeof id === "number"; depth++) {
     const t = q.at(`/landed_titles/landed_titles/${id}`) as Record<string, unknown> | undefined;

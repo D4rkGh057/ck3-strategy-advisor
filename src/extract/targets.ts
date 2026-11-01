@@ -3,6 +3,7 @@ import { fullName } from "./names.js";
 import type { Localizer } from "../localization.js";
 import { resolveTitleName, titleTierFromKey } from "./titleUtils.js";
 import { collectAllies, collectWars } from "./foreignRealm.js";
+import { inRealm } from "./expansion.js";
 
 export type Route = "de_jure" | "claim" | "fabricate";
 
@@ -101,7 +102,8 @@ export function extractTargets(
       liegeTitle !== undefined
         ? (q.at(`/landed_titles/landed_titles/${liegeTitle}/holder`) as number | undefined)
         : undefined;
-    if (liegeHolder === playerId) continue; // your own vassal's county
+    // Anything under a title you (or a chain of your vassals) hold is already your realm.
+    if (liegeTitle !== undefined && inRealm(q, playerId, liegeTitle)) continue;
 
     const dejureDuchy = q.at(`${t}/de_jure_liege`) as number | undefined;
     const duchyHeldByYou = dejureDuchy !== undefined && held.has(dejureDuchy);
@@ -116,10 +118,12 @@ export function extractTargets(
             strength: num(q.at(`/living/${liegeHolder}/landed_data/strength`)),
           }
         : null;
+    // A holder who is also his own liege is one army, not two.
+    const liegeStrength = liege && liege.id !== holderId ? liege.strength : null;
     const defender =
-      holderStrength === null && liege?.strength == null
+      holderStrength === null && liegeStrength === null
         ? null
-        : (holderStrength ?? 0) + (liege?.strength ?? 0);
+        : (holderStrength ?? 0) + (liegeStrength ?? 0);
 
     targets.push({
       titleId: id,

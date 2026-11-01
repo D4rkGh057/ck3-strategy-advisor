@@ -63,7 +63,7 @@ export function registerTargetsTool(server: McpServer, cache: SnapshotCache) {
       let body = `# Expansion targets in ${r.region} (your army ${r.yourStrength !== null ? Math.round(r.yourStrength) : "?"})\n`;
       body += shown.length
         ? shown.map(line).join("\n")
-        : "No counties held by others in this region.";
+        : "No counties outside your realm in this region (everything left is already yours or your vassals').";
       if (r.targets.length > n) body += `\n\n_Showing ${n} of ${r.targets.length}._`;
       return { content: [{ type: "text", text: stamp(snap, body) }] };
     },
