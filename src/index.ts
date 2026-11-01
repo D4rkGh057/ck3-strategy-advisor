@@ -9,6 +9,7 @@ import { GameData } from "./gameData.js";
 import { modLocalizationDirs } from "./mods.js";
 import { dirname } from "node:path";
 import { registerAllTools } from "./tools/index.js";
+import { registerAllPrompts } from "./prompts/index.js";
 import { HistoryStore, defaultHistoryDir } from "./history.js";
 
 async function main() {
@@ -32,6 +33,7 @@ async function main() {
     },
   );
   registerAllTools(server, cache);
+  registerAllPrompts(server);
   await server.connect(new StdioServerTransport());
 }
 main().catch((e) => {

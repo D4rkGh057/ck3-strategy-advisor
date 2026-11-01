@@ -4,8 +4,9 @@ import { charName, playerIdOf } from "./common.js";
 import { resolveTitleName } from "./titleUtils.js";
 
 export interface AlertTarget {
-  kind: "character" | "title";
-  id: number;
+  kind: "character" | "title" | "decision";
+  /** Numeric save id; for a decision, its script key. */
+  id: number | string;
   name: string;
 }
 export interface Alert {
@@ -41,12 +42,19 @@ export function extractAlerts(q: Query, loc: Localizer): Alert[] {
     const targets = scope?.["event_targets"] as Record<string, unknown> | undefined;
     for (const [role, t] of Object.entries(targets ?? {})) {
       if (role === "actor" || !t || typeof t !== "object") continue;
-      const { type: kind, identity } = t as { type?: string; identity?: number };
+      const { type: kind, identity, key } = t as { type?: string; identity?: number; key?: string };
       // The game repeats an action per role (e.g. demand vs exchange hostage); list each target once.
+      if (kind === "decision") {
+        // Decisions are addressed by script key (no numeric identity), e.g. "hold_court_decision".
+        if (typeof key === "string" && !alert.targets.some((x) => x.id === key))
+          alert.targets.push({ kind: "decision", id: key, name: loc.text(key) });
+        continue;
+      }
       if (typeof identity !== "number" || alert.targets.some((x) => x.id === identity)) continue;
       if (kind === "char" && identity !== playerId)
         alert.targets.push({ kind: "character", id: identity, name: charName(q, identity) });
-      else if (kind === "title")
+      // Titles are stored as type "lt" (landed title) in important actions.
+      else if (kind === "lt" || kind === "title")
         alert.targets.push({
           kind: "title",
           id: identity,

@@ -77,6 +77,12 @@ Or in **Claude Desktop**, add to `claude_desktop_config.json`:
    in-game date and how long ago it was read, so you know how current it is.
 3. Saved again? Just ask again — the server re-reads the newest save automatically.
 
+## Prompts
+
+| Prompt           | Description |
+| ---------------- | ----------- |
+| `ck3-turn-review` | Prioritised turn review (do now / watch / trend). Calls `realm_overview`, `alerts`, `succession`, `factions`, `military` and `history` in one batch, then drills down only where the data points. Optional `focus` argument. In Claude Code it appears as `/mcp__ck3-advisor__ck3-turn-review`. |
+
 ## Tools
 
 | Tool                  | What it returns                                                                                                                                                                                                          |
