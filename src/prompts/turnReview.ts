@@ -4,20 +4,26 @@ import { z } from "zod";
 /** Pure text builder, kept separate from registration so it can be unit-tested. */
 export function turnReviewText(focus?: string): string {
   const topic = focus?.trim();
-  return `Run a turn review of my Crusader Kings III realm using the ck3-advisor tools. Read-only: never suggest the save was or can be modified by you.
+  return `Run a turn review of my Crusader Kings III realm using the ck3-advisor tools. Read-only: you cannot change the game or the save. Answer in the player's language.
 
 ## 1. Gather (one parallel batch)
 Call these together, they are independent: \`realm_overview\`, \`alerts\`, \`succession\`, \`factions\`, \`military\`, \`history\`.
-If any call returns an error (no save, Ironman, unreadable), report that error verbatim and stop.
+If \`realm_overview\` returns an error (no save, Ironman, unreadable), report that error verbatim and stop.
+If any other call fails, note the gap in the report and continue with the rest.
+If the save stamp shows the save is old, say so first: the advice may be outdated.
 
 ## 2. Drill down only where the data points
 Do NOT call every tool. Follow up only on a trigger:
 - A faction is near its threshold, or the leader is a known vassal -> \`vassals\` (and \`character\` on the leader).
-- The heir is missing, a minor, unmarried, or the succession list holds a rival -> \`family\` or \`marriage_candidates\`.
+- The heir is missing, a minor, unmarried, or the succession list holds a rival -> \`family\` first. Call \`marriage_candidates\` (slow, about 15 s) only if \`family\` shows an unmarried adult heir.
 - Alerts mention council seats or courtiers -> \`council\`.
 - Gold is low or income negative -> \`domain\`.
 - A neighbour appears hostile in the data -> \`diplomacy\` or \`foreign_realm\`.
-Cap the follow-ups at 4 calls.
+- The heir or another child is a minor with no clear guardian -> \`guardians\`.
+- Alerts mention schemes, plots or secrets against the ruler -> \`intrigue\`.
+- Alerts mention religious conflict or faith pressure -> \`faith\`.
+- No war, gold is healthy and nothing above is urgent -> \`expansion\` (then \`expansion_targets\`) to suggest an opportunity.
+Cap the follow-ups at 4 calls. If more triggers fire, prioritise: risk of losing the throne or titles > war > economy > opportunities.
 
 ## 3. Report (short, prioritised, no raw dumps)
 1. **Verdict**: one line on the realm's state, with the save date from the stamp.

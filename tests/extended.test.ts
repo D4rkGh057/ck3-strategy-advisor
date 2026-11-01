@@ -235,3 +235,19 @@ test("buildParentIndex gives the same index when the caller passes /living it al
   expect(plain.get(4)).toEqual([1, 5]); // a living and a dead parent
   expect([...shared]).toEqual([...plain]);
 });
+
+test("buildParentIndex fills the store once and reuses it without reading the save again", async () => {
+  const gs = Buffer.from(
+    "living={\n1={ first_name=A family_data={ child={ 3 } } }\n}\n" +
+      "dead_unprunable={\n5={ first_name=C family_data={ child=3 } }\n}\n",
+  );
+  const store: { parentIndex?: Map<number, number[]> } = {};
+  const first = await queryFixture(gs, (q) => parentIndex(q, undefined, store));
+  expect(first.get(3)).toEqual([1, 5]);
+  expect(store.parentIndex).toBe(first);
+  // A query over a save with no characters at all still gets the stored index back.
+  const second = await queryFixture(Buffer.from("date=1000.1.1\n"), (q) =>
+    parentIndex(q, undefined, store),
+  );
+  expect(second).toBe(first);
+});

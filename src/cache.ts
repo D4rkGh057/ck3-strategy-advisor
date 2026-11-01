@@ -6,6 +6,7 @@ import { queryGamestate, type Query } from "./parser.js";
 import { GameData } from "./gameData.js";
 import { GameLookup } from "./gameLookup.js";
 import type { HistoryStore } from "./history.js";
+import type { ParentIndexStore } from "./extract/family.js";
 
 export class SnapshotCache {
   private current: Snapshot | null = null;
@@ -15,6 +16,8 @@ export class SnapshotCache {
   private inFlight: Promise<Snapshot | { error: string }> | null = null;
   private inFlightKey = "";
   private memos = new Map<string, Promise<unknown>>();
+  /** Derived data shared between tools for the current save; replaced whenever a new save is built. */
+  private shared: ParentIndexStore = {};
   /** Index over the game's script files (rules lookups, trait skill modifiers). */
   readonly lookup: GameLookup;
 
@@ -60,6 +63,7 @@ export class SnapshotCache {
       this.gamestateText = null; // lazily materialized by rawGamestateText()
       this.current = snap;
       this.memos = new Map();
+      this.shared = {};
       this.key = k;
       // A failed write must never fail the tool call that triggered the build.
       void this.history?.record(snap).catch(() => {});
@@ -71,11 +75,17 @@ export class SnapshotCache {
     }
   }
 
-  async query<T>(fn: (q: Query) => T): Promise<T | { error: string }> {
+  /**
+   * `fn` also receives the shared store of the save it runs against. Both are read in the same
+   * synchronous step, so a rebuild in between cannot pair one save's data with another's store.
+   */
+  async query<T>(fn: (q: Query, shared: ParentIndexStore) => T): Promise<T | { error: string }> {
     const snap = await this.get();
     if ("error" in snap) return { error: snap.error };
-    if (!this.gamestate) return { error: "No gamestate available." };
-    return queryGamestate(this.gamestate, fn);
+    const gamestate = this.gamestate;
+    const shared = this.shared;
+    if (!gamestate) return { error: "No gamestate available." };
+    return queryGamestate(gamestate, (q) => fn(q, shared));
   }
 
   /**
@@ -83,7 +93,10 @@ export class SnapshotCache {
    * AND every argument it depends on; results are shared between callers, so treat them as
    * read-only. Dropped when a newer save is built; failed runs are never kept.
    */
-  async memoQuery<T>(key: string, fn: (q: Query) => T): Promise<T | { error: string }> {
+  async memoQuery<T>(
+    key: string,
+    fn: (q: Query, shared: ParentIndexStore) => T,
+  ): Promise<T | { error: string }> {
     const snap = await this.get();
     if ("error" in snap) return { error: snap.error };
     const hit = this.memos.get(key);

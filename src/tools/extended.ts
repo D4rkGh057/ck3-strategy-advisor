@@ -5,7 +5,7 @@ import type { Query } from "../parser.js";
 import { stamp, truncate } from "../format.js";
 import { extractAlerts } from "../extract/alerts.js";
 import { extractCourt, type CourtMember } from "../extract/court.js";
-import { extractFamily, type Relative } from "../extract/family.js";
+import { extractFamily, type ParentIndexStore, type Relative } from "../extract/family.js";
 import { extractDomain, type Holding } from "../extract/domain.js";
 import { extractIntrigue } from "../extract/intrigue.js";
 import { extractMarriageCandidates, type MarriageCandidate } from "../extract/marriage.js";
@@ -20,13 +20,13 @@ type ToolResult = { isError?: boolean; content: { type: "text"; text: string }[]
 async function run<T>(
   cache: SnapshotCache,
   key: string,
-  extract: (q: Query) => T,
+  extract: (q: Query, shared: ParentIndexStore) => T,
   render: (data: T) => string,
 ): Promise<ToolResult> {
   const snap = await cache.get();
   if ("error" in snap) return { isError: true, content: [{ type: "text", text: snap.error }] };
   // Wrap so a null/array extractor result can't be confused with cache.query's { error }.
-  const result = await cache.memoQuery(key, (q) => ({ data: extract(q) }));
+  const result = await cache.memoQuery(key, (q, shared) => ({ data: extract(q, shared) }));
   if ("error" in result) return { isError: true, content: [{ type: "text", text: result.error }] };
   return { content: [{ type: "text", text: stamp(snap, render(result.data)) }] };
 }
@@ -190,7 +190,7 @@ export function registerExtendedTools(server: McpServer, cache: SnapshotCache) {
       run(
         cache,
         `family:${id ?? ""}`,
-        (q) => extractFamily(q, id),
+        (q, shared) => extractFamily(q, id, undefined, shared),
         (f) => {
           if (!f) return `No character with id ${id}.`;
           const section = (title: string, list: Relative[], withRel = false) =>
@@ -340,7 +340,7 @@ export function registerExtendedTools(server: McpServer, cache: SnapshotCache) {
       run(
         cache,
         `marriage_candidates:${JSON.stringify(args)}`,
-        (q) => extractMarriageCandidates(q, cache.loc, cache.lookup, args),
+        (q, shared) => extractMarriageCandidates(q, cache.loc, cache.lookup, args, shared),
         (m) => {
           if (!m) return `No character with id ${args.id}.`;
           const s = m.subject;

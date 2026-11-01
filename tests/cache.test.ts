@@ -74,6 +74,16 @@ test("memoQuery results are dropped when a newer save is read", async () => {
   expect(second).not.toBe(first);
 });
 
+test("the shared store is the same across queries of one save and fresh for a newer save", async () => {
+  const { cache, file } = memoCache(1000);
+  const first = await cache.query((_q, shared) => shared);
+  const again = await cache.memoQuery("other", (_q, shared) => ({ shared }));
+  expect((again as { shared: object }).shared).toBe(first);
+  utimesSync(file, new Date(2000), new Date(2000));
+  const next = await cache.query((_q, shared) => shared);
+  expect(next).not.toBe(first);
+});
+
 test("memoQuery does not keep a failed run", async () => {
   const { cache } = memoCache(1000);
   let runs = 0;

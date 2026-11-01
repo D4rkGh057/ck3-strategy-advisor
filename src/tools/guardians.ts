@@ -115,8 +115,8 @@ export function registerGuardiansTool(server: McpServer, cache: SnapshotCache) {
     },
     async ({ top, per_child }: { top?: number; per_child?: number }) => {
       const perChild = per_child ?? 3;
-      const res = await cache.memoQuery(`guardians:${perChild}`, (q) => ({
-        info: extractGuardians(q, cache.loc, cache.lookup, perChild),
+      const res = await cache.memoQuery(`guardians:${perChild}`, (q, shared) => ({
+        info: extractGuardians(q, cache.loc, cache.lookup, perChild, shared),
       }));
       if ("error" in res) return { isError: true, content: [{ type: "text", text: res.error }] };
       const snap = await cache.get();
