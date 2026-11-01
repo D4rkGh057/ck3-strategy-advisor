@@ -38,6 +38,32 @@ describe("ck3-turn-review prompt", () => {
     expect(turnReviewText()).toContain("GROSS");
   });
 
+  test("stops only when realm_overview fails; other failures are noted and skipped", () => {
+    const text = turnReviewText();
+    expect(text).toContain("If `realm_overview` returns an error");
+    expect(text).toContain("note the gap");
+    expect(text).not.toContain("If any call returns an error");
+  });
+
+  test("drill-down covers guardians, intrigue, faith and expansion with a priority rule", () => {
+    const text = turnReviewText();
+    for (const t of ["guardians", "intrigue", "faith", "expansion", "expansion_targets"])
+      expect(text).toContain(`\`${t}\``);
+    expect(text).toContain("prioritise");
+  });
+
+  test("calls the slow marriage_candidates only after family shows an unmarried adult heir", () => {
+    const text = turnReviewText();
+    expect(text).toContain("`family` first");
+    expect(text).toContain("only if `family` shows an unmarried adult heir");
+  });
+
+  test("asks for the player's language and flags old saves", () => {
+    const text = turnReviewText();
+    expect(text).toContain("player's language");
+    expect(text).toContain("save is old");
+  });
+
   test("focus is injected only when given", () => {
     expect(turnReviewText("my heir")).toContain('"my heir"');
     expect(turnReviewText("   ")).not.toContain("Extra focus");
