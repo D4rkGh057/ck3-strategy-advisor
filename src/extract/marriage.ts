@@ -2,7 +2,7 @@ import type { Query } from "../parser.js";
 import type { Localizer } from "../localization.js";
 import type { GameLookup } from "../gameLookup.js";
 import { ageAt, characterAge, characterRecord, idList, num, playerIdOf } from "./common.js";
-import { Kin, buildParentIndex } from "./family.js";
+import { Kin, buildParentIndex, type ParentIndexStore } from "./family.js";
 import { fullNameOf } from "./names.js";
 import { effectiveSkills, type EffectiveSkills } from "./skills.js";
 import { resolveTitleName, titleTierFromKey, type TitleTier } from "./titleUtils.js";
@@ -154,6 +154,7 @@ export function extractMarriageCandidates(
   loc: Localizer,
   lookup: GameLookup | null = null,
   opts: MarriageOptions = {},
+  store?: ParentIndexStore,
 ): MarriageInfo | null {
   const playerId = playerIdOf(q);
   const heir = idList(q.at(`/living/${playerId}/landed_data/succession`))[0];
@@ -184,7 +185,7 @@ export function extractMarriageCandidates(
 
   // /living is slow to materialize: read it once and share it with the parent index.
   const all = (q.at("/living") as Record<string, unknown> | undefined) ?? {};
-  const kin = new Kin(q, buildParentIndex(q, all));
+  const kin = new Kin(q, buildParentIndex(q, all, store));
   const playerRec = characterRecord(q, playerId);
   const playerProvince = num(
     ((playerRec?.["alive_data"] as Rec | undefined)?.["location"] as Rec | undefined)?.["location"],
@@ -255,10 +256,15 @@ export function extractMarriageCandidates(
   const skip = (why: string) => {
     excluded[why] = (excluded[why] ?? 0) + 1;
   };
+  // Names cost a house lookup each, and ~40k characters are scanned: keep the raw records and
+  // resolve names only for the shortlist that is actually returned.
   type Prelim = Omit<
     MarriageCandidate,
-    "skills" | "traits" | "goodGenes" | "badGenes" | "claims" | "allyRuler"
-  >;
+    "skills" | "traits" | "goodGenes" | "badGenes" | "claims" | "allyRuler" | "name" | "host"
+  > & {
+    rec: Rec;
+    host: { id: number; title: string | null; tier: TitleTier | null; rec: Rec | null } | null;
+  };
   const found: Prelim[] = [];
   const hostFilter = opts.host?.toLowerCase().replace(/_/g, "");
   let scanned = 0;
@@ -381,7 +387,7 @@ export function extractMarriageCandidates(
 
     found.push({
       id,
-      name: fullNameOf(q, loc, c, id),
+      rec: c,
       age,
       female: c["female"] === true,
       source,
@@ -389,9 +395,9 @@ export function extractMarriageCandidates(
         hostId !== null
           ? {
               id: hostId,
-              name: fullNameOf(q, loc, hostRec ?? undefined, hostId),
               title: hostTitle?.name ?? null,
               tier: hostTitle?.tier ?? null,
+              rec: hostRec,
             }
           : null,
       ownTitle: ownTitle?.name ?? null,
@@ -405,7 +411,7 @@ export function extractMarriageCandidates(
 
   const subjectRiteName = subjectRite?.name ?? null;
   // Standing of the connection first (court tier, same rite); skills only break ties.
-  const standing = (m: Prelim) =>
+  const standing = (m: { host: { tier: TitleTier | null } | null; rite: string | null }) =>
     (m.host?.tier ? TIER_WEIGHT[m.host.tier] : 0) * 100 +
     (m.rite !== null && m.rite === subjectRiteName ? 50 : 0);
   found.sort((a, b) => standing(b) - standing(a));
@@ -444,7 +450,23 @@ export function extractMarriageCandidates(
       .map((cl) => cl?.title)
       .filter((t): t is number => typeof t === "number");
     return {
-      ...m,
+      id: m.id,
+      name: fullNameOf(q, loc, m.rec, m.id),
+      age: m.age,
+      female: m.female,
+      source: m.source,
+      host: m.host && {
+        id: m.host.id,
+        name: fullNameOf(q, loc, m.host.rec ?? undefined, m.host.id),
+        title: m.host.title,
+        tier: m.host.tier,
+      },
+      ownTitle: m.ownTitle,
+      rite: m.rite,
+      kinship: m.kinship,
+      fertility: m.fertility,
+      distance: m.distance,
+      notes: m.notes,
       skills: effectiveSkills(q, loc, lookup, m.id),
       traits: traitIdx.map((t) => loc.resolveTrait(t)),
       goodGenes: traitIdx

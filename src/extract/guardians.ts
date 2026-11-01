@@ -2,7 +2,7 @@ import type { Query } from "../parser.js";
 import type { Localizer } from "../localization.js";
 import type { GameLookup, Skill } from "../gameLookup.js";
 import { ageAt, idList, num, playerIdOf } from "./common.js";
-import { Kin, buildParentIndex } from "./family.js";
+import { Kin, buildParentIndex, type ParentIndexStore } from "./family.js";
 import { fullNameOf } from "./names.js";
 import { effectiveSkills, type SkillSet } from "./skills.js";
 
@@ -337,6 +337,7 @@ export function extractGuardians(
   loc: Localizer,
   lookup: GameLookup | null,
   perChild = 3,
+  store?: ParentIndexStore,
 ): GuardiansInfo | null {
   loc.setTraitLookup((q.at("/traits_lookup") as string[] | null | undefined) ?? null);
   const playerId = playerIdOf(q);
@@ -349,7 +350,7 @@ export function extractGuardians(
   };
   if (!recOf(playerId)) return null;
 
-  const kin = new Kin(q, buildParentIndex(q, living));
+  const kin = new Kin(q, buildParentIndex(q, living, store));
 
   // Court positions held at this court: employee -> raw position key.
   const holds = new Map<number, string>();

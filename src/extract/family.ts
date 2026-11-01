@@ -24,10 +24,18 @@ export interface FamilyInfo {
 // The save stores only parent -> child links (family_data.child); invert them
 // across living and dead characters to answer "who are X's parents".
 // `living` may be passed when the caller already materialized /living (each read costs ~2s).
+// `store` is the per-save slot owned by SnapshotCache: reading /dead_unprunable costs ~3s, so the
+// first tool to need the index fills it and the others reuse it. Treat the result as read-only.
+export interface ParentIndexStore {
+  parentIndex?: Map<number, number[]>;
+}
+
 export function buildParentIndex(
   q: Query,
   living?: Record<string, unknown>,
+  store?: ParentIndexStore,
 ): Map<number, number[]> {
+  if (store?.parentIndex) return store.parentIndex;
   const index = new Map<number, number[]>();
   for (const section of ["living", "dead_unprunable"]) {
     const all =
@@ -45,6 +53,7 @@ export function buildParentIndex(
       }
     }
   }
+  if (store) store.parentIndex = index;
   return index;
 }
 
@@ -125,12 +134,17 @@ function relative(q: Query, id: number, relation: string): Relative {
   };
 }
 
-export function extractFamily(q: Query, id?: number, heirCount = 10): FamilyInfo | null {
+export function extractFamily(
+  q: Query,
+  id?: number,
+  heirCount = 10,
+  store?: ParentIndexStore,
+): FamilyInfo | null {
   const playerId = playerIdOf(q);
   const subjectId = id ?? playerId;
   const rec = characterRecord(q, subjectId);
   if (!rec) return null;
-  const kin = new Kin(q, buildParentIndex(q));
+  const kin = new Kin(q, buildParentIndex(q, undefined, store));
   const fam = (rec["family_data"] as Record<string, unknown> | undefined) ?? {};
   const byAge = (a: Relative, b: Relative) => (b.age ?? -1) - (a.age ?? -1);
 
