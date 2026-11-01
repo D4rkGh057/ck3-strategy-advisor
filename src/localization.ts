@@ -137,6 +137,8 @@ export class Localizer {
       v
         .replace(/\$([\w.]+)\$/g, (_, k: string) => this.map.get(k) ?? "")
         .replace(/@[\w.]+!/g, "")
+        // [Concept('key','Shown text')|E] -> Shown text
+        .replace(/\[Concept\(\s*'[^']*'\s*,\s*'([^']*)'\s*\)\|[A-Za-z]+\]/g, "$1")
         // [concept|E] -> concept; [ROOT.Char.GetName|E] and other script calls -> dropped
         .replace(/\[([^\]|]+)\|[A-Za-z]+\]/g, (_, inner: string) =>
           /^[\w ]+$/.test(inner) ? inner : "",

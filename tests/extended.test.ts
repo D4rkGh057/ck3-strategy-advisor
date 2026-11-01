@@ -77,6 +77,40 @@ test("alerts group the player's important actions and skip other players'", asyn
   expect(alerts[2]!.targets.map((t) => t.name)).toEqual(["Brian", "Malachy"]);
 });
 
+test("alerts list landed-title (type lt) and decision targets", async () => {
+  const gs = Buffer.from(
+    GS.toString("utf8").replace(
+      "4={ important_action_type=action_station_men_at_arms",
+      "5={ important_action_type=action_title_election character=100 scope={ event_targets={ landed_title={ type=lt identity=15 } } } visible=yes }\n" +
+        "6={ important_action_type=action_take_decision character=100 scope={ event_targets={ actor={ type=char identity=100 } decision={ type=decision key=hold_court_decision } } } visible=yes }\n" +
+        "4={ important_action_type=action_station_men_at_arms",
+    ),
+  );
+  const l = new Localizer(null);
+  const alerts = await queryGamestate(gs, (q) => extractAlerts(q, l));
+  const byType = new Map(alerts.map((a) => [a.type, a.targets]));
+  expect(byType.get("action_title_election")).toEqual([
+    { kind: "title", id: 15, name: "b_roscrea" },
+  ]);
+  expect(byType.get("action_take_decision")).toEqual([
+    { kind: "decision", id: "hold_court_decision", name: "hold_court_decision" },
+  ]);
+  // previous behaviour: character targets are unchanged
+  expect(byType.get("action_close_family_can_marry")!.map((t) => t.name)).toEqual([
+    "Brian",
+    "Malachy",
+  ]);
+});
+
+test("Localizer.text keeps the display text of [Concept('key','Text')|E]", () => {
+  const root = fakeGameDir();
+  writeFileSync(
+    join(root, "game", "localization", "english", "y_l_english.yml"),
+    "l_english:\n action_y:1 \"[Concept('inspiration','Inspired')|E] Person can be [Concept('sponsor','Sponsored')|E]\"\n",
+  );
+  expect(new Localizer(root).text("action_y")).toBe("Inspired Person can be Sponsored");
+});
+
 test("court resolves council tasks, court positions, knights and best courtiers", async () => {
   const court = await queryGamestate(GS, (q) => extractCourt(q, loc, null, 2));
   expect(court.council.map((c) => [c.task, c.member.name])).toEqual([
