@@ -110,6 +110,7 @@ Or in **Claude Desktop**, add to `claude_desktop_config.json`:
 | `foreign_realm`       | Look up any realm by name/key — ruler, army, allies, liege, active wars.                                                                                                                                                 |
 | `council`             | Council seats, everyone eligible (courtiers and vassals) with age, health, opinion, claims, and a risk-adjusted suggested reshuffle.                                                                                     |
 | `expansion_targets`   | Counties others hold in your de jure kingdom, ranked by route (de jure / claim / needs claim) and defender strength.                                                                                                     |
+| `guardians`           | Children at your court with education focus and current guardian, the best courtiers to guard each by the focus skill, and rankings for court tutor, wet nurse and caravan master using the game's aptitude formulas and validity rules. The hiring pool and cost are not in the save. |
 | `court_candidates`    | Unattached same-faith adults in your region you could invite, best per council seat vs your current holder, plus knights.                                                                                                |
 
 ## Known limitations (v1)
