@@ -8,7 +8,7 @@ to Claude as compact, curated tools. Ask Claude "what's my situation?" and it ca
 pull your realm overview, military, succession, diplomacy, vassals, factions, and
 expansion options straight from your latest save.
 
-It is read-only: it never modifies your save or your game.
+It never modifies your save or your game. The one thing it writes is a small per-playthrough timeline (`~/.ck3-advisor/history`, override with `CK3_HISTORY_DIR`) that feeds the `history` tool.
 
 ## Requirements
 
@@ -83,6 +83,7 @@ Or in **Claude Desktop**, add to `claude_desktop_config.json`:
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `realm_overview`      | Ruler, age, title & tier, gold/income, prestige/piety, legitimacy, laws, limits. Start here.                                                                                                                             |
 | `alerts`              | The game's own "important actions" nudges (unmarried, CB available, unstationed MaA…).                                                                                                                                   |
+| `history`             | Timeline of this playthrough (gold, lifetime prestige, piety, income, strength, titles, vassals) from the saves the server has read, with first-to-last deltas. Realm totals only. |
 | `military`            | Levy + strength, your men-at-arms (type, size, station), ongoing wars.                                                                                                                                                   |
 | `succession`          | Heirs in order, succession & gender laws, rival claimants.                                                                                                                                                               |
 | `diplomacy`           | Alliances, truces, independence, and who most dislikes you.                                                                                                                                                              |

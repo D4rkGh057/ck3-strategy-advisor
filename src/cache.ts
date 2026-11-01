@@ -5,6 +5,7 @@ import { buildSnapshot, type Snapshot } from "./snapshot.js";
 import { queryGamestate, type Query } from "./parser.js";
 import { GameData } from "./gameData.js";
 import { GameLookup } from "./gameLookup.js";
+import type { HistoryStore } from "./history.js";
 
 export class SnapshotCache {
   private current: Snapshot | null = null;
@@ -21,6 +22,8 @@ export class SnapshotCache {
     private source: Source,
     readonly loc: Localizer,
     readonly game: GameData = new GameData(null),
+    /** Optional timeline store; every successfully built save is recorded (best effort). */
+    readonly history: HistoryStore | null = null,
   ) {
     this.lookup = new GameLookup(game.root, loc);
   }
@@ -58,6 +61,8 @@ export class SnapshotCache {
       this.current = snap;
       this.memos = new Map();
       this.key = k;
+      // A failed write must never fail the tool call that triggered the build.
+      void this.history?.record(snap).catch(() => {});
       return snap;
     } catch (e) {
       if (e instanceof IronmanError) return { error: e.message };

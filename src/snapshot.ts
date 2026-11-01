@@ -53,6 +53,8 @@ export interface Snapshot {
   vassalCount: number;
   expansion: ExpansionInfo;
   titles: TitlesInfo;
+  /** Stable campaign identity (`playthrough_id`) and its monotonic clock (`playthrough_timer`). */
+  playthrough: { id: string | null; timer: number | null };
 }
 
 function num(v: unknown): number | null {
@@ -66,6 +68,7 @@ export async function buildSnapshot(gamestate: Buffer, loc: Localizer): Promise<
   return queryGamestate(gamestate, (q: Query): Snapshot => {
     loc.setTraitLookup((q.at("/traits_lookup") as string[]) ?? null);
     const date = formatCk3Date(q.at("/date"));
+    const pid = q.at("/playthrough_id");
     const playerId = q.at("/played_character/character");
     const alive = `/living/${playerId}/alive_data`;
     const landed = `/living/${playerId}/landed_data`;
@@ -118,6 +121,10 @@ export async function buildSnapshot(gamestate: Buffer, loc: Localizer): Promise<
       vassals,
       vassalCount,
       titles,
+      playthrough: {
+        id: typeof pid === "string" ? pid : null,
+        timer: num(q.at("/playthrough_timer")),
+      },
     };
   });
 }

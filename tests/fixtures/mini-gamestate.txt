@@ -1,4 +1,6 @@
 date=1130.7.24
+playthrough_id="009c045a-2d8b-4490-b153-3517ecf30c07"
+playthrough_timer=56800
 traits_lookup={ "just" "temperate" "chaste" }
 meta_data={
 	version="1.8.1"
