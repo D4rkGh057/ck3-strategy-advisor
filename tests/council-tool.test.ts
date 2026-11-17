@@ -35,9 +35,9 @@ async function runCouncil(government: string | null): Promise<string> {
 }
 
 describe("council tool", () => {
-  it("says a merchant government has no council instead of suggesting seats", async () => {
+  it("says a merchant has only the spouse seat instead of suggesting the five seats", async () => {
     const text = await runCouncil("merchant_government");
-    expect(text).toContain("no council");
+    expect(text).toContain("only the spouse seat exists");
     expect(text).not.toContain("- chancellor:");
     expect(text).not.toContain("suggest");
   });
@@ -46,6 +46,6 @@ describe("council tool", () => {
     const text = await runCouncil("feudal_government");
     expect(text).toContain("- chancellor:");
     expect(text).toContain("- court_chaplain:");
-    expect(text).not.toContain("no council");
+    expect(text).not.toContain("only the spouse seat exists");
   });
 });

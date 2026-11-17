@@ -49,7 +49,7 @@ export function registerCouncilTool(server: McpServer, cache: SnapshotCache) {
     {
       title: "Council",
       description:
-        "Your council seats (chancellor, steward, marshal, spymaster, court chaplain, incl. seats held by landed vassals) and everyone eligible: courtiers and direct vassals with in-game skills, traits, age, health, opinion of you, claims on your titles and faction membership, plus a suggested reshuffle that maximises each seat's primary skill minus risk penalties. Still check faith (chaplain), secrets and relationships before swapping: those are not in the save data used here. Merchant governments have no council: the tool says so instead of suggesting seats.",
+        "Your council seats (chancellor, steward, marshal, spymaster, court chaplain, incl. seats held by landed vassals) and everyone eligible: courtiers and direct vassals with in-game skills, traits, age, health, opinion of you, claims on your titles and faction membership, plus a suggested reshuffle that maximises each seat's primary skill minus risk penalties. Still check faith (chaplain), secrets and relationships before swapping: those are not in the save data used here. A merchant only has the spouse seat: the tool says so instead of suggesting the five classic seats.",
       inputSchema: {},
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
@@ -78,9 +78,9 @@ export function registerCouncilTool(server: McpServer, cache: SnapshotCache) {
       let body = "# Council\n";
       if (noCouncil)
         body +=
-          "This government has no council: the game does not offer chancellor, steward, marshal, " +
-          "spymaster or court chaplain seats to a merchant. Use `court` for the court positions " +
-          "(e.g. bodyguards, champion). The list below is only who is in your court.\n";
+          "A merchant has no chancellor, steward, marshal, spymaster or court chaplain seat (the game " +
+          "excludes them); only the spouse seat exists. Use `court` for the seat holder and the " +
+          "court positions (e.g. bodyguards, champion). The list below is only who is in your court.\n";
       for (const a of plan) {
         const cur = a.current ? brief(a.current, a.role) : "vacant";
         const same = a.current?.id === a.suggested?.id;
