@@ -30,6 +30,8 @@ export interface RealmOverview {
   /** Gross monthly gold income. `balance` is NOT net of expenses (it can exceed income); unused in output. */
   income: number | null;
   balance: number | null;
+  /** `landed_data/gold_expenses`: seen on a 1.21 merchant save; presence/meaning elsewhere unverified. */
+  goldExpenses: number | null;
   legitimacy: number | null;
   government: string | null;
   laws: string[];
@@ -93,6 +95,7 @@ export async function buildSnapshot(gamestate: Buffer, loc: Localizer): Promise<
       age: characterAge(q, playerId as number),
       income: num(q.at(`${alive}/income`)),
       balance: num(q.at(`${landed}/balance`)),
+      goldExpenses: num(q.at(`${landed}/gold_expenses`)),
       legitimacy: num(q.at(`/living/${playerId}/playable_data/legitimacy`)),
       government: (q.at(`${landed}/government`) as string | undefined) ?? null,
       laws: laws.map((l) => loc.resolve(l)),

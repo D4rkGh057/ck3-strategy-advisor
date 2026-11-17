@@ -43,6 +43,7 @@ living={
 	}
 	landed_data={
 		domain={ 1 2 }
+		gold_expenses=1.5
 		council={ 22222 }
 		laws={ "crown_authority_3" "single_heir_succession_law" "male_preference_law" }
 		succession={ 22222 }

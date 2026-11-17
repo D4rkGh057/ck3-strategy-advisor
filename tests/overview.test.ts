@@ -18,6 +18,7 @@ test("buildSnapshot extracts the realm overview", async () => {
   expect(snap.overview.prestigeLifetime).toBe(820.0);
   expect(snap.overview.piety).toBe(100.0);
   expect(snap.overview.income).toBe(12.3);
+  expect(snap.overview.goldExpenses).toBe(1.5);
   expect(snap.overview.laws).toEqual([
     "crown_authority_3",
     "single_heir_succession_law",

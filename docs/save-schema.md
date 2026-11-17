@@ -54,6 +54,7 @@ These field mappings were verified through jomini against two real text saves: E
 | `/living/{player}/landed_data/laws` | array | Array of active realm law string keys | `["crown_authority_3", "single_heir_succession_law", "male_preference_law"]` |
 | `/living/{player}/landed_data/succession` | array | Ordered succession list of character IDs; index 0 is the first heir only under single_heir_succession_law (NOT verified for partition laws; use `playable_data/diarchy_successor` for the designated heir) | `[198957, 209183, 50523480, ...]` |
 | `/living/{player}/landed_data/balance` | number | Meaning unverified. NOT net income: a real save had `balance` 23.67 > `alive_data/income` 22.96 while the game showed +17.4 net (22.0 income - 4.5 expenses). Do not present it as net. | `346.06462` |
+| `/living/{player}/landed_data/gold_expenses` | number | Seen on a 1.21 landless merchant save (value 0.07 vs gross income 0.71). Meaning unverified (monthly? all expense types?); absent on pre-1.21 landed saves not yet checked. Shown by `realm_overview` only when present, labelled unverified. | `0.07087` |
 | `/living/{player}/landed_data/became_ruler_date` | Date | Date the player character became a ruler | `Date(1413-12-14)` |
 | `/living/{player}/landed_data/last_war_finish_date` | Date | Date of the most recently concluded war | `Date(1449-12-22)` |
 | `/living/{player}/playable_data/knights` | array | Array of knight character IDs serving the player | `[186788, 196089, 16931165, ...]` |

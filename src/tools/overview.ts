@@ -26,7 +26,10 @@ export function registerOverview(server: McpServer, cache: SnapshotCache) {
       const lines = [
         `# ${o.rulerName} — ${o.primaryTitle} (tier ${o.tier})`,
         `- House: ${o.house} | Age: ${o.age ?? "?"} | ${o.spouses > 0 ? `Married (${o.spouses} spouse${o.spouses > 1 ? "s" : ""})` : "Unmarried"}`,
-        `- Gold: ${fmt(o.gold)} | Gross income: ${fmt(o.income, 2)}/month (before expenses; the save does not store the net figure, check it in-game)`,
+        `- Gold: ${fmt(o.gold)} | Gross income: ${fmt(o.income, 2)}/month (before expenses; the save does not store the net figure, check it in-game)` +
+          (o.goldExpenses !== null
+            ? ` | Expenses (save field gold_expenses, meaning unverified): ${fmt(o.goldExpenses, 2)}`
+            : ""),
         `- Prestige: ${fmt(o.prestige)} (lifetime ${fmt(o.prestigeLifetime)}) | Piety: ${fmt(o.piety)} | Legitimacy: ${fmt(o.legitimacy)}`,
         `- Holdings: ${o.holdings}/${o.domainLimit ?? "?"} domain limit | Vassals counting toward limit: ${o.vassalsTowardsLimit ?? "?"}/${o.vassalLimit ?? "?"} (the game's own count; see \`vassals\` for all direct vassals)`,
       ];
