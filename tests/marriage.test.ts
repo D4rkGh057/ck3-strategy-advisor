@@ -139,6 +139,21 @@ test("lists the game's marriage candidates and explains who was filtered out", a
   });
 });
 
+test("someone else's concubine is not offered as a candidate", async () => {
+  const { loc, lookup } = setup();
+  const kept = Buffer.from(
+    GS.toString("utf8").replace(
+      'first_name="Pool" birth=1044.1.1 female=yes rite=1 skill={ 5 5 5 5 5 5 }\n\tfamily_data={ }',
+      'first_name="Pool" birth=1044.1.1 female=yes rite=1 skill={ 5 5 5 5 5 5 }\n\tfamily_data={ concubinist=10 }',
+    ),
+  );
+  const m = await queryGamestate(kept, (q) =>
+    extractMarriageCandidates(q, loc, lookup, { id: 1, sameLanguage: true }),
+  );
+  expect(m!.candidates.map((c) => c.name).sort()).toEqual(["Courtier", "Daughter"]);
+  expect(m!.excluded).toMatchObject({ "already someone's concubine": 1 });
+});
+
 test("candidates carry their court, standing and source", async () => {
   const { loc, lookup } = setup();
   const m = await queryGamestate(GS, (q) => extractMarriageCandidates(q, loc, lookup, { id: 1 }));

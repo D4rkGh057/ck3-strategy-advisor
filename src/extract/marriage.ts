@@ -291,6 +291,10 @@ export function extractMarriageCandidates(
       skip("already married");
       continue;
     }
+    if (idList(fam["concubinist"]).length > 0) {
+      skip("already someone's concubine");
+      continue;
+    }
     if (betrothed.length > 0 && !betrothed.includes(subjectId)) {
       skip("betrothed to someone else");
       continue;

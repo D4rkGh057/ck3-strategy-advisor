@@ -13,6 +13,10 @@ export interface FamilyInfo {
   subject: { id: number; name: string; age: number | null };
   parents: Relative[];
   spouses: Relative[];
+  /** Concubines the subject keeps (stored apart from spouses). */
+  concubines: Relative[];
+  /** Whose concubine the subject is, if anyone. */
+  concubineOf: Relative[];
   formerSpouses: Relative[];
   betrothed: Relative[];
   children: Relative[];
@@ -158,6 +162,8 @@ export function extractFamily(
     subject: { id: subjectId, name: charName(q, subjectId), age: characterAge(q, subjectId) },
     parents: kin.parents(subjectId).map((p) => relative(q, p, "parent")),
     spouses: idList(fam["spouse"]).map((s) => relative(q, s, "spouse")),
+    concubines: idList(fam["concubine"]).map((s) => relative(q, s, "concubine")),
+    concubineOf: idList(fam["concubinist"]).map((s) => relative(q, s, "concubinist")),
     formerSpouses: idList(fam["former_spouses"]).map((s) => relative(q, s, "former spouse")),
     betrothed: idList(fam["betrothed"]).map((s) => relative(q, s, "betrothed")),
     children: kin
