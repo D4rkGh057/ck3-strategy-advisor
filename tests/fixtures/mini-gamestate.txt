@@ -72,7 +72,7 @@ living={
 	first_name="Philippe"
 	skill={ 6 5 5 4 4 5 }
 	alive_data={ gold={ value=50.0 } }
-	landed_data={ domain={ 5 } strength=7000.0 current_strength=7000.0 }
+	landed_data={ domain={ 5 } strength=7000.0 current_strength=7000.0 vassal_contracts={ 5003 } tributary_contracts={ 5002 } }
 }
 40002={
 	first_name="Domnall"
@@ -113,6 +113,9 @@ active_opinions={
 vassal_contracts={
 database={
 5001={ vassal=22222 liege=33564206 levels={ 11 0 } }
+5002={ vassal=40000 liege=40001 levels={ 4 0=1 } contract_group=tributary_subjugated }
+5003={ vassal=40002 liege=40001 levels={ 4 0=1 } contract_group=tribal_vassal }
+5004="none"
 }
 }
 faction_manager={

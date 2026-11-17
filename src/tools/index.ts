@@ -18,6 +18,8 @@ import { registerCourtiersTool } from "./courtiers.js";
 import { registerHistoryTool } from "./history.js";
 import { registerFaithTool } from "./faith.js";
 import { registerGuardiansTool } from "./guardians.js";
+import { registerPrisonersTool } from "./prisoners.js";
+import { registerRaidsTool } from "./raids.js";
 
 type ToolResult = { content: { type: string; text?: string }[] };
 
@@ -70,4 +72,6 @@ function registerEach(server: McpServer, cache: SnapshotCache) {
   registerHistoryTool(server, cache);
   registerFaithTool(server, cache);
   registerGuardiansTool(server, cache);
+  registerPrisonersTool(server, cache);
+  registerRaidsTool(server, cache);
 }
