@@ -82,6 +82,7 @@ Or in **Claude Desktop**, add to `claude_desktop_config.json`:
 | Prompt           | Description |
 | ---------------- | ----------- |
 | `ck3-turn-review` | Prioritised turn review (do now / watch / trend). Calls `realm_overview`, `alerts`, `succession`, `factions`, `military` and `history` in one batch, then drills down only where the data points. Optional `focus` argument. In Claude Code it appears as `/mcp__ck3-advisor__ck3-turn-review`. |
+| `ck3-succession-plan` | Succession check: who inherits, how safe the line is, and what to do about heirs, guardians, marriage and rival claimants. Calls `realm_overview`, `succession` and `family` in one batch, then drills down (`guardians`, `character`, `prisoners`, `marriage_candidates`, `court_candidates`, `factions`) only on a trigger, capped at 4 calls. Optional `focus` argument. In Claude Code it appears as `/mcp__ck3-advisor__ck3-succession-plan`. |
 
 ## Tools
 
@@ -111,6 +112,8 @@ Or in **Claude Desktop**, add to `claude_desktop_config.json`:
 | `council`             | Council seats, everyone eligible (courtiers and vassals) with age, health, opinion, claims, and a risk-adjusted suggested reshuffle.                                                                                     |
 | `expansion_targets`   | Counties others hold in your de jure kingdom, ranked by route (de jure / claim / needs claim) and defender strength.                                                                                                     |
 | `guardians`           | Children at your court with education focus and current guardian, the best courtiers to guard each by the focus skill, and rankings for court tutor, wet nurse and caravan master using the game's aptitude formulas and validity rules. The hiring pool and cost are not in the save. |
+| `prisoners`           | Characters you hold prisoner (dungeon / house arrest) with time held, kinship, skills, court, rank, claims on your titles and a ransom/release/keep lead each; your close kin held by others. Ransom price and imprisonment reason are not in the save. |
+| `raids`               | Your raid-capable armies and whether each is raiding (intent, progress, loot, men, supply, province, commander), plus the other rulers' active raids. No target list, expected loot or raid availability in the save; raids aimed at your realm cannot be isolated. |
 | `court_candidates`    | Unattached same-faith adults in your region you could invite, best per council seat vs your current holder, plus knights.                                                                                                |
 
 ## Known limitations (v1)
