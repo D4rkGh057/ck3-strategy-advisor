@@ -11,6 +11,8 @@ import {
   type CouncilRole,
 } from "../extract/council.js";
 
+const NO_COUNCIL_GOVERNMENT = "merchant_government";
+
 function line(c: Courtier): string {
   const s = c.skills;
   const age = c.age !== null ? `, age ${c.age}` : "";
@@ -47,7 +49,7 @@ export function registerCouncilTool(server: McpServer, cache: SnapshotCache) {
     {
       title: "Council",
       description:
-        "Your council seats (chancellor, steward, marshal, spymaster, court chaplain, incl. seats held by landed vassals) and everyone eligible: courtiers and direct vassals with in-game skills, traits, age, health, opinion of you, claims on your titles and faction membership, plus a suggested reshuffle that maximises each seat's primary skill minus risk penalties. Still check faith (chaplain), secrets and relationships before swapping: those are not in the save data used here.",
+        "Your council seats (chancellor, steward, marshal, spymaster, court chaplain, incl. seats held by landed vassals) and everyone eligible: courtiers and direct vassals with in-game skills, traits, age, health, opinion of you, claims on your titles and faction membership, plus a suggested reshuffle that maximises each seat's primary skill minus risk penalties. Still check faith (chaplain), secrets and relationships before swapping: those are not in the save data used here. Merchant governments have no council: the tool says so instead of suggesting seats.",
       inputSchema: {},
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
@@ -68,9 +70,17 @@ export function registerCouncilTool(server: McpServer, cache: SnapshotCache) {
       if ("error" in result)
         return { isError: true, content: [{ type: "text", text: result.error }] };
       const { council } = result;
-      const plan = suggestCouncil(council);
+      // The game's `valid_position` for all five seats excludes government_is_merchant, so a
+      // merchant has no council; suggesting seats would be misleading.
+      const noCouncil = snap.overview.government === NO_COUNCIL_GOVERNMENT;
+      const plan = noCouncil ? [] : suggestCouncil(council);
 
       let body = "# Council\n";
+      if (noCouncil)
+        body +=
+          "This government has no council: the game does not offer chancellor, steward, marshal, " +
+          "spymaster or court chaplain seats to a merchant. Use `court` for the court positions " +
+          "(e.g. bodyguards, champion). The list below is only who is in your court.\n";
       for (const a of plan) {
         const cur = a.current ? brief(a.current, a.role) : "vacant";
         const same = a.current?.id === a.suggested?.id;
