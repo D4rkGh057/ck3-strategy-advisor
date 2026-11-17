@@ -4,6 +4,7 @@ import type { Localizer } from "../localization.js";
 import { resolveTitleName, titleTierFromKey, type TitleTier } from "./titleUtils.js";
 import { extractCharacter } from "./characters.js";
 import { forEachRelation, forEachWar } from "./scan.js";
+import { collectTributaries, findOverlord, type RulerLink } from "./tributaries.js";
 
 export interface AllyRef {
   id: number;
@@ -30,6 +31,8 @@ export interface ForeignRealmInfo {
   strength: number | null;
   currentStrength: number | null;
   liege: { id: number; name: string } | null; // null => independent
+  tributaryOf: RulerLink | null; // independent, but pays tribute to this ruler
+  tributaries: RulerLink[]; // rulers who pay tribute to this one
   allies: AllyRef[];
   wars: ForeignWar[];
 }
@@ -170,6 +173,20 @@ export function extractForeignRealm(
 
   const allies = typeof holderId === "number" ? collectAllies(q, loc, holderId) : [];
   const wars = typeof holderId === "number" ? collectWars(q, loc, holderId) : [];
+  const tributaryOf = typeof holderId === "number" ? findOverlord(q, loc, holderId) : null;
+  const tributaries = typeof holderId === "number" ? collectTributaries(q, loc, holderId) : [];
 
-  return { titleId, realmName, tier, ruler, strength, currentStrength, liege, allies, wars };
+  return {
+    titleId,
+    realmName,
+    tier,
+    ruler,
+    strength,
+    currentStrength,
+    liege,
+    tributaryOf,
+    tributaries,
+    allies,
+    wars,
+  };
 }

@@ -18,7 +18,15 @@ export function formatForeignRealm(info: ForeignRealmInfo): string {
     info.strength === null
       ? "not recorded"
       : `${Math.round(info.strength)}${info.currentStrength !== null ? ` (current ${Math.round(info.currentStrength)})` : ""}`;
-  const liege = info.liege ? `vassal of ${info.liege.name}` : "independent";
+  const liege = info.liege
+    ? `vassal of ${info.liege.name}`
+    : info.tributaryOf
+      ? `independent, tributary of ${info.tributaryOf.name} (id ${info.tributaryOf.id})`
+      : "independent";
+  const tributaries =
+    info.tributaries.length === 0
+      ? "none"
+      : info.tributaries.map((t) => `${t.name} (id ${t.id})`).join(", ");
   const allies =
     info.allies.length === 0
       ? "none"
@@ -34,6 +42,7 @@ export function formatForeignRealm(info: ForeignRealmInfo): string {
     `Gold ${info.ruler.gold ?? "?"} | Prestige ${info.ruler.prestige ?? "?"}\n` +
     `- Army: ${army}\n` +
     `- Liege: ${liege}\n` +
+    `- Tributaries: ${tributaries}\n` +
     `- Allies: ${allies}\n` +
     `- Wars: ${wars}`
   );
@@ -46,7 +55,9 @@ export function registerForeignRealmTool(server: McpServer, cache: SnapshotCache
       title: "Foreign Realm",
       description:
         'Look up any realm by name or title key (e.g. "Scotland", "k_france") — its ruler, ' +
-        "army strength, allies, liege, and active wars. For your own realm use `realm_overview`.",
+        "army strength, allies, liege (or the ruler it pays tribute to), the rulers who pay it " +
+        "tribute, and active wars. Searches realm/title names, not ruler names. For your own " +
+        "realm use `realm_overview`.",
       inputSchema: { name: z.string().describe("realm name or title key, full or partial") },
       annotations: { readOnlyHint: true, openWorldHint: false },
     },

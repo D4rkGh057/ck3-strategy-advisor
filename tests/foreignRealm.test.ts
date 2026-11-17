@@ -96,6 +96,8 @@ describe("foreign_realm tool", () => {
     strength: 6000,
     currentStrength: 5500,
     liege: null,
+    tributaryOf: { id: 40001, name: "Philippe" },
+    tributaries: [{ id: 40002, name: "Domnall" }],
     allies: [{ id: 40001, name: "Philippe", realm: "France" }],
     wars: [{ side: "attacker", cbType: "conquest_cb", targetTitle: "Lothian" }],
   };
@@ -105,7 +107,8 @@ describe("foreign_realm tool", () => {
     expect(text).toContain("# Alba (Kingdom)");
     expect(text).toContain("Ruler: Causantin (id 40000) — Mar 7 | Gold 88 | Prestige 500");
     expect(text).toContain("Army: 6000 (current 5500)");
-    expect(text).toContain("Liege: independent");
+    expect(text).toContain("Liege: independent, tributary of Philippe (id 40001)");
+    expect(text).toContain("Tributaries: Domnall (id 40002)");
     expect(text).toContain("Allies: France (Philippe)");
     expect(text).toContain("Wars: attacker vs Lothian");
   });
