@@ -143,6 +143,22 @@ test("family links parents from dead characters and labels heirs by kinship", as
   expect(conch!.heirs).toEqual([]);
 });
 
+test("family lists concubines on the keeper and the keeper on the concubine", async () => {
+  const withConcubine = Buffer.from(
+    GS.toString("utf8")
+      .replace("family_data={ child={ 101 } }", "family_data={ child={ 101 } concubine=104 }")
+      .replace('first_name="Gormlaith"', 'first_name="Gormlaith" family_data={ concubinist=100 }'),
+  );
+  const keeper = await queryGamestate(withConcubine, (q) => extractFamily(q));
+  expect(keeper!.concubines.map((c) => [c.id, c.name])).toEqual([[104, "Gormlaith"]]);
+  expect(keeper!.concubineOf).toEqual([]);
+  const concubine = await queryGamestate(withConcubine, (q) => extractFamily(q, 104));
+  expect(concubine!.concubineOf.map((c) => c.id)).toEqual([100]);
+  // Nobody keeps a concubine in the plain fixture.
+  const plain = await queryGamestate(GS, (q) => extractFamily(q));
+  expect(plain!.concubines).toEqual([]);
+});
+
 test("domain maps baronies to provinces via the game files", async () => {
   const game = new GameData(fakeGameDir());
   expect(game.baronyProvince.get("b_roscrea")).toBe(46);
@@ -167,6 +183,30 @@ test("domain maps baronies to provinces via the game files", async () => {
   });
   // b_roscrea sits in a county the player doesn't hold.
   expect(d.looseHoldings.map((h) => h.title)).toEqual(["b_roscrea"]);
+});
+
+test("domain lists buildings under construction with their cost", async () => {
+  const building = Buffer.from(
+    GS.toString("utf8").replace(
+      "levy=534 garrison=535",
+      "constructions={ building=market_villages_01 index=1 start_time=884.10.30 days=689 cost={ gold=75 prestige=200 } character=100 } levy=534 garrison=535",
+    ),
+  );
+  const game = new GameData(fakeGameDir());
+  const d = await queryGamestate(building, (q) => extractDomain(q, loc, game));
+  expect(d.counties[0]!.holdings[0]!.constructions).toEqual([
+    {
+      building: "building_market_villages_01",
+      slot: 1,
+      startedOn: "884.10.30",
+      days: 689,
+      gold: 75,
+      prestige: 200,
+    },
+  ]);
+  // A holding with no build keeps an empty list.
+  const idle = await queryGamestate(GS, (q) => extractDomain(q, loc, game));
+  expect(idle.counties[0]!.holdings[0]!.constructions).toEqual([]);
 });
 
 test("intrigue only reveals secrets the player knows, plus hooks both ways", async () => {

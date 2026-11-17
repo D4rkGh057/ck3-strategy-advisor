@@ -86,9 +86,24 @@ function holdingLine(h: Holding, cache: SnapshotCache): string {
     h.buildings.length > 0
       ? `\n    - Buildings: ${h.buildings.join(", ")}`
       : "\n    - Buildings: none";
+  const building =
+    h.constructions.length > 0
+      ? "\n" +
+        h.constructions
+          .map((c) => {
+            const cost = [
+              c.gold !== null ? `${Math.round(c.gold)} gold` : null,
+              c.prestige !== null ? `${Math.round(c.prestige)} prestige` : null,
+            ].filter(Boolean);
+            const since = c.startedOn ? `, started ${c.startedOn}` : "";
+            const days = c.days !== null ? `, ${c.days} days left` : "";
+            return `    - Under construction: ${c.building} (${cost.join(" + ") || "cost n/a"}${since}${days})`;
+          })
+          .join("\n")
+      : "";
   return (
     `  - ${h.title}${where}${h.isCapital ? " ★capital" : ""}${h.leased ? " (leased temple, not counted in the domain limit)" : ""}: ${parts.join(", ")}` +
-    `${buildings}; ${h.emptySlots} empty slot(s)`
+    `${buildings}${building}; ${h.emptySlots} empty slot(s)`
   );
 }
 
@@ -201,6 +216,8 @@ export function registerExtendedTools(server: McpServer, cache: SnapshotCache) {
           let body = `# Family of ${f.subject.name} (${f.subject.id}, age ${f.subject.age ?? "?"})\n`;
           body += section("Parents", f.parents);
           body += section("Spouses", f.spouses);
+          if (f.concubines.length) body += section("Concubines", f.concubines);
+          if (f.concubineOf.length) body += section("Concubine of", f.concubineOf);
           if (f.betrothed.length) body += section("Betrothed", f.betrothed);
           if (f.formerSpouses.length) body += section("Former spouses", f.formerSpouses);
           body += section("Children", f.children);
@@ -220,7 +237,7 @@ export function registerExtendedTools(server: McpServer, cache: SnapshotCache) {
       title: "Domain",
       description:
         "Land you hold personally: each county's development, control and culture, and each holding's type, " +
-        "buildings, empty building slots, levy, garrison, income and fort level, plus holdings vs your domain " +
+        "buildings, buildings under construction (cost, start date), empty building slots, levy, garrison, income and fort level, plus holdings vs your domain " +
         "limit. Use it to plan construction or decide what to grant away.",
       inputSchema: {},
       annotations: READ_ONLY,

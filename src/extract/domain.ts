@@ -4,12 +4,27 @@ import type { GameData } from "../gameData.js";
 import { num, playerIdOf, isLeasedTitle } from "./common.js";
 import { resolveTitleName } from "./titleUtils.js";
 
+export interface Construction {
+  /** Localized building name. */
+  building: string;
+  /** Slot index the building is being placed in (an upgrade targets the slot it replaces). */
+  slot: number | null;
+  /** In-game date the work began, as stored ("884.10.30"). */
+  startedOn: string | null;
+  /** Days left until the build completes (the save's `days` counts down; verified across two saves). */
+  days: number | null;
+  gold: number | null;
+  prestige: number | null;
+}
+
 export interface Holding {
   title: string;
   province: number | null;
   type: string | null; // localized holding type, e.g. "Castle"
   buildings: string[];
   emptySlots: number;
+  /** Buildings under construction in this holding. */
+  constructions: Construction[];
   levy: number | null;
   garrison: number | null;
   income: number | null;
@@ -31,6 +46,14 @@ export interface DomainInfo {
   looseHoldings: Holding[];
   holdingCount: number;
   domainLimit: number | null;
+}
+
+// jomini parses bare dates (884.10.30) into a Date; render them back as year.month.day.
+function dateText(v: unknown): string | null {
+  if (v instanceof Date) {
+    return `${v.getUTCFullYear()}.${v.getUTCMonth() + 1}.${v.getUTCDate()}`;
+  }
+  return typeof v === "string" ? v : null;
 }
 
 function cultureName(q: Query, id: unknown): string | null {
@@ -60,6 +83,25 @@ export function extractDomain(q: Query, loc: Localizer, game: GameData): DomainI
     const h = (prov["holding"] as Record<string, unknown> | undefined) ?? {};
     const buildings = (h["buildings"] as Record<string, unknown>[] | undefined) ?? [];
     const type = typeof h["type"] === "string" ? loc.resolve(h["type"] as string) : null;
+    // One build is an object, several would be an array; accept both.
+    const rawBuilds = h["constructions"];
+    const builds = (Array.isArray(rawBuilds) ? rawBuilds : rawBuilds ? [rawBuilds] : []) as Record<
+      string,
+      unknown
+    >[];
+    const constructions: Construction[] = builds
+      .filter((c) => typeof c?.["building"] === "string")
+      .map((c) => {
+        const cost = (c["cost"] as Record<string, unknown> | undefined) ?? {};
+        return {
+          building: loc.resolve(`building_${c["building"] as string}`),
+          slot: num(c["index"]),
+          startedOn: dateText(c["start_time"]),
+          days: num(c["days"]),
+          gold: num(cost["gold"]),
+          prestige: num(cost["prestige"]),
+        };
+      });
     return {
       title: resolveTitleName(q, loc, id),
       province,
@@ -69,6 +111,7 @@ export function extractDomain(q: Query, loc: Localizer, game: GameData): DomainI
         .filter((t): t is string => typeof t === "string")
         .map((t) => loc.resolve(`building_${t}`)),
       emptySlots: buildings.filter((b) => !b || b["type"] === undefined).length,
+      constructions,
       levy: num(h["levy"]),
       garrison: num(h["garrison"]),
       income: num(h["income"]),
