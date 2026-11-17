@@ -426,7 +426,7 @@ export function extractGuardians(
       hasChildren: idList((r["family_data"] as Rec | undefined)?.["child"]).length > 0,
       health: num(alive["health"]) ?? 0,
       languages: Array.isArray(alive["languages"]) ? alive["languages"].length : 0,
-      imprisoned: r["prison_data"] !== undefined,
+      imprisoned: alive["prison_data"] !== undefined,
       relation: id === playerId ? "self" : kinship,
       holds: holds.get(id) ?? null,
       wards: wardCount.get(id) ?? 0,

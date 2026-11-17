@@ -68,6 +68,18 @@ test("ranks guardians by the focus skill and drops adults who already have two w
   expect(baby.picks).toEqual([]);
 });
 
+test("an imprisoned adult (alive_data/prison_data) is never offered as a guardian", async () => {
+  const gs = Buffer.from(
+    GS.toString("utf8").replace(
+      "traits={ 0 1 } court_data={ employer=1 } alive_data={ health=5 }",
+      "traits={ 0 1 } court_data={ employer=1 } alive_data={ health=5 prison_data={ imprisoner=1 date=1065.1.1 type=house_arrest } }",
+    ),
+  );
+  const r = (await queryGamestate(gs, (q) => extractGuardians(q, new Localizer(null), null, 3)))!;
+  const kid = r.children.find((c) => c.name === "Kid")!;
+  expect(kid.picks.map((p) => p.person.name)).not.toContain("Tutor");
+});
+
 test("always lists the current guardian, even below the top picks", async () => {
   const r = (await queryGamestate(GS, (q) => extractGuardians(q, new Localizer(null), null, 1)))!;
   const kid = r.children.find((c) => c.name === "Kid")!;
