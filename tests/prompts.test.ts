@@ -4,6 +4,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { registerAllPrompts } from "../src/prompts/index.js";
 import { turnReviewText } from "../src/prompts/turnReview.js";
+import { successionPlanText } from "../src/prompts/successionPlan.js";
 
 async function connect() {
   const server = new McpServer({ name: "t", version: "0" });
@@ -67,5 +68,58 @@ describe("ck3-turn-review prompt", () => {
   test("focus is injected only when given", () => {
     expect(turnReviewText("my heir")).toContain('"my heir"');
     expect(turnReviewText("   ")).not.toContain("Extra focus");
+  });
+});
+
+describe("ck3-succession-plan prompt", () => {
+  test("is listed next to the turn review, with an optional focus argument", async () => {
+    const client = await connect();
+    const { prompts } = await client.listPrompts();
+    expect(prompts.map((p) => p.name)).toEqual(
+      expect.arrayContaining(["ck3-turn-review", "ck3-succession-plan"]),
+    );
+    const p = prompts.find((x) => x.name === "ck3-succession-plan");
+    expect(p?.arguments?.find((x) => x.name === "focus")?.required).toBeFalsy();
+  });
+
+  test("get returns one user message that gathers succession, family and the overview", async () => {
+    const client = await connect();
+    const res = await client.getPrompt({ name: "ck3-succession-plan", arguments: {} });
+    expect(res.messages).toHaveLength(1);
+    const text = (res.messages[0].content as { text: string }).text;
+    for (const t of ["succession", "family", "realm_overview"]) expect(text).toContain(`\`${t}\``);
+    expect(text).not.toContain("Extra focus");
+  });
+
+  test("stops only when realm_overview fails; other failures are noted and skipped", () => {
+    const text = successionPlanText();
+    expect(text).toContain("If `realm_overview` returns an error");
+    expect(text).toContain("note the gap");
+  });
+
+  test("drills down into guardians, marriage and rivals only on a trigger, capped", () => {
+    const text = successionPlanText();
+    for (const t of ["guardians", "marriage_candidates", "court_candidates", "character", "prisoners"])
+      expect(text).toContain(`\`${t}\``);
+    expect(text).toContain("only if `family` shows an unmarried adult heir");
+    expect(text).toContain("Cap the follow-ups at 4");
+  });
+
+  test("states the succession honesty limits", () => {
+    const text = successionPlanText();
+    expect(text).toContain("does NOT store");
+    expect(text).toContain("partition");
+    expect(text).toContain("acceptance chance");
+  });
+
+  test("asks for the player's language and flags old saves", () => {
+    const text = successionPlanText();
+    expect(text).toContain("player's language");
+    expect(text).toContain("save is old");
+  });
+
+  test("focus is injected only when given", () => {
+    expect(successionPlanText("my second son")).toContain('"my second son"');
+    expect(successionPlanText("   ")).not.toContain("Extra focus");
   });
 });
