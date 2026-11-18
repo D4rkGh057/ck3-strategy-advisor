@@ -70,7 +70,17 @@ interface RouteSample {
   geometric: number | null;
 }
 
-function flowTotals(r: Rec | undefined): { sell: number; want: number } {
+/** Duchy title id of the player's primary title's capital county (a landless merchant's company seat). */
+export function capitalDuchy(q: Query, playerId: number): number | null {
+  const domain = idList(q.at(`/living/${playerId}/landed_data/domain`));
+  const capital =
+    domain[0] !== undefined ? num(q.at(`/landed_titles/landed_titles/${domain[0]}/capital`)) : null;
+  return capital !== null
+    ? num(q.at(`/landed_titles/landed_titles/${capital}/de_jure_liege`))
+    : null;
+}
+
+export function flowTotals(r: Rec | undefined): { sell: number; want: number } {
   const surplus = num(r?.["surplus"]) ?? 0;
   const exported = num(r?.["export"]) ?? 0;
   const need = num(r?.["need"]) ?? 0;
@@ -239,16 +249,13 @@ export function extractTradeSuggestions(
 
   // Anchors: realm markets, markets of your routes, and the market of your capital's duchy.
   const anchorIds = new Set<number>([...realmMarketIds(q, playerId), ...ownMarkets]);
-  const domain = idList(q.at(`/living/${playerId}/landed_data/domain`));
-  const capital =
-    domain[0] !== undefined ? num(q.at(`/landed_titles/landed_titles/${domain[0]}/capital`)) : null;
-  const duchy =
-    capital !== null ? num(q.at(`/landed_titles/landed_titles/${capital}/de_jure_liege`)) : null;
+  const duchy = capitalDuchy(q, playerId);
   if (duchy !== null)
     for (const [id, m] of Object.entries(markets))
       if (m["duchy"] === duchy) anchorIds.add(Number(id));
 
   // Expertise: XP per category in the game's category order, on the primary (company) title.
+  const domain = idList(q.at(`/living/${playerId}/landed_data/domain`));
   const rawXp =
     cats && domain[0] !== undefined
       ? q.at(`/landed_titles/landed_titles/${domain[0]}/company_progression/category_xp`)

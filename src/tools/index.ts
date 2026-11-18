@@ -28,6 +28,7 @@ import { registerRaidsTool } from "./raids.js";
 import { registerTradeTool } from "./trade.js";
 import { registerTradeSuggestionsTool } from "./tradeSuggestions.js";
 import { registerCompanyTool } from "./company.js";
+import { registerMarketsTool } from "./markets.js";
 
 type Registered = { content: { type: string; text?: string }[] };
 
@@ -92,4 +93,5 @@ function registerEach(server: McpServer, cache: SnapshotCache) {
   registerTradeSuggestionsTool(server, cache);
   registerRaidsTool(server, cache);
   registerCompanyTool(server, cache);
+  registerMarketsTool(server, cache);
 }

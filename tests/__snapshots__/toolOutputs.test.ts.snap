@@ -287,6 +287,16 @@ None.
       },
     ],
   },
+  "markets": {
+    "content": [
+      {
+        "text": "_Snapshot: 1130.7.24 (read AGE)_
+
+This save has no trade data (pre-Silk and Silver or the DLC is off).",
+        "type": "text",
+      },
+    ],
+  },
   "marriage_candidates": {
     "content": [
       {
@@ -611,6 +621,15 @@ exports[`tool outputs > with no save 1`] = `
     "isError": true,
   },
   "intrigue": {
+    "content": [
+      {
+        "text": "No CK3 save found. Save your game, then ask again.",
+        "type": "text",
+      },
+    ],
+    "isError": true,
+  },
+  "markets": {
     "content": [
       {
         "text": "No CK3 save found. Save your game, then ask again.",
