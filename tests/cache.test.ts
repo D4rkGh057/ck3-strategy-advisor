@@ -124,6 +124,11 @@ test("a failing history store never breaks the cache", async () => {
   const dir = mkdtempSync(join(tmpdir(), "ck3-"));
   writeFileSync(join(dir, "game.ck3"), makeTextEnvelope(GS));
   const broken = { record: () => Promise.reject(new Error("disk full")) } as never;
-  const cache = new SnapshotCache(new SaveFileSource({ saveDir: dir }), new Localizer(null), undefined, broken);
+  const cache = new SnapshotCache(
+    new SaveFileSource({ saveDir: dir }),
+    new Localizer(null),
+    undefined,
+    broken,
+  );
   expect("error" in (await cache.get())).toBe(false);
 });

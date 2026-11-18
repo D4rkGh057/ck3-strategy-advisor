@@ -87,10 +87,14 @@ export function extractFaith(
     tenets: strings(data.tenet).map((t) => label(loc, t)),
     doctrines: doctrines.map((d) => doctrineLabel(loc, lookup, d)),
     addedDoctrines: baseRec
-      ? doctrines.filter((d) => !baseDoctrines.includes(d)).map((d) => doctrineLabel(loc, lookup, d))
+      ? doctrines
+          .filter((d) => !baseDoctrines.includes(d))
+          .map((d) => doctrineLabel(loc, lookup, d))
       : [],
     removedDoctrines: baseRec
-      ? baseDoctrines.filter((d) => !doctrines.includes(d)).map((d) => doctrineLabel(loc, lookup, d))
+      ? baseDoctrines
+          .filter((d) => !doctrines.includes(d))
+          .map((d) => doctrineLabel(loc, lookup, d))
       : [],
   };
 }

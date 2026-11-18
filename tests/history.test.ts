@@ -23,7 +23,20 @@ test("entryFromSnapshot keeps only the small set of trend fields", async () => {
   const e = entryFromSnapshot(await snap());
   expect(e).toMatchObject({ timer: 56800, date: "1130.7.24", ruler: "Emperor Jenec", gold: 124.5 });
   expect(Object.keys(e).sort()).toEqual(
-    ["date", "gold", "holdings", "income", "levy", "piety", "prestige", "ruler", "strength", "timer", "titles", "vassals"].sort(),
+    [
+      "date",
+      "gold",
+      "holdings",
+      "income",
+      "levy",
+      "piety",
+      "prestige",
+      "ruler",
+      "strength",
+      "timer",
+      "titles",
+      "vassals",
+    ].sort(),
   );
 });
 

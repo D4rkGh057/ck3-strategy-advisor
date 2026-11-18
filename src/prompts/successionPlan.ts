@@ -47,7 +47,9 @@ export function registerSuccessionPlanPrompt(server: McpServer) {
         focus: z
           .string()
           .optional()
-          .describe("Optional concern to weigh first, e.g. 'my second son' or 'the claimant in my dungeon'."),
+          .describe(
+            "Optional concern to weigh first, e.g. 'my second son' or 'the claimant in my dungeon'.",
+          ),
       },
     },
     ({ focus }) => ({

@@ -37,11 +37,10 @@ living={
 `);
 // Parents of 1 are 20, who also parent 7 so 7 reads as a sibling.
 const WITH_PARENTS = Buffer.from(
-  GS.toString("utf8")
-    .replace(
-      "family_data={ child={ 3 } } alive_data={ health=6 } }",
-      "family_data={ child={ 3 } } alive_data={ health=6 } }\n20={ first_name=\"Parent\" birth=1000.1.1 skill={ 5 5 5 5 5 5 } family_data={ child={ 1 7 } } }",
-    ),
+  GS.toString("utf8").replace(
+    "family_data={ child={ 3 } } alive_data={ health=6 } }",
+    'family_data={ child={ 3 } } alive_data={ health=6 } }\n20={ first_name="Parent" birth=1000.1.1 skill={ 5 5 5 5 5 5 } family_data={ child={ 1 7 } } }',
+  ),
 );
 
 const run = (gs = WITH_PARENTS) =>
@@ -104,13 +103,17 @@ test("flags the player when they are the prisoner", async () => {
     ),
   );
   const r = (await run(gs))!;
-  expect(r.playerImprisoned).toEqual({ imprisonerName: "Jailer", type: "dungeon", since: "1065.5.1" });
+  expect(r.playerImprisoned).toEqual({
+    imprisonerName: "Jailer",
+    type: "dungeon",
+    since: "1065.5.1",
+  });
   expect(r.held.some((p) => p.id === 1)).toBe(false);
 });
 
 test("returns an empty list when the player holds nobody", async () => {
   const gs = Buffer.from(
-    "date=1066.6.1\nplayed_character={ character=1 player=1 }\nliving={ 1={ first_name=\"Ruler\" birth=1020.1.1 skill={ 5 5 5 5 5 5 } } }\n",
+    'date=1066.6.1\nplayed_character={ character=1 player=1 }\nliving={ 1={ first_name="Ruler" birth=1020.1.1 skill={ 5 5 5 5 5 5 } } }\n',
   );
   const r = (await run(gs))!;
   expect(r.held).toEqual([]);

@@ -75,7 +75,12 @@ test("a single repeated key (bare string in jomini) still yields a list", async 
 });
 
 test("a character without a rite yields an empty result instead of throwing", async () => {
-  const gs = Buffer.from(GS.toString().replace("first_name=\"Ruler\" birth=1020.1.1 rite=1", "first_name=\"Ruler\" birth=1020.1.1"));
+  const gs = Buffer.from(
+    GS.toString().replace(
+      'first_name="Ruler" birth=1020.1.1 rite=1',
+      'first_name="Ruler" birth=1020.1.1',
+    ),
+  );
   const f = await queryGamestate(gs, (q) => extractFaith(q, loc));
   expect(f.riteName).toBeNull();
   expect(f.tenets).toEqual([]);

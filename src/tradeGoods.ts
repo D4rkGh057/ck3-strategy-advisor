@@ -78,7 +78,9 @@ export function loadCategoryModel(gameRoot: string | null): CategoryModel | null
       ].map((g) => g[0]);
       const perLevel = /per_level_interval\s*=\s*\{([^}]*)\}/.exec(body)?.[1] ?? "";
       const mod = (kind: string): number =>
-        Number(new RegExp(`${key}_${kind}_price_mult\\s*=\\s*(-?[\\d.]+)`).exec(perLevel)?.[1] ?? 0);
+        Number(
+          new RegExp(`${key}_${kind}_price_mult\\s*=\\s*(-?[\\d.]+)`).exec(perLevel)?.[1] ?? 0,
+        );
       order.push(key);
       defs.set(key, { goods, sellPerLevel: mod("sell"), buyPerLevel: mod("buy") });
     }

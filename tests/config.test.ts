@@ -23,14 +23,14 @@ function home(...docFolders: string[]): string {
 }
 const NO_WSL = join(tmpdir(), "ck3-no-such-users-root");
 
-test("finds saves under OneDrive\Documentos on Windows", async () => {
+test("finds saves under OneDrive/Documentos on Windows", async () => {
   const h = home(join("OneDrive", "Documentos"));
   expect(await discoverSaveDir({ env: { USERPROFILE: h }, usersRoot: NO_WSL })).toBe(
     join(h, "OneDrive", "Documentos", TAIL),
   );
 });
 
-test("finds saves under OneDrive\Documents and plain Documents", async () => {
+test("finds saves under OneDrive/Documents and plain Documents", async () => {
   const a = home(join("OneDrive", "Documents"));
   expect(await discoverSaveDir({ env: { USERPROFILE: a }, usersRoot: NO_WSL })).toBe(
     join(a, "OneDrive", "Documents", TAIL),

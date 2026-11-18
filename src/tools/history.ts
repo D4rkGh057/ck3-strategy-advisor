@@ -32,7 +32,13 @@ export function registerHistoryTool(server: McpServer, cache: SnapshotCache) {
       if (!cache.history || !id) {
         return {
           content: [
-            { type: "text", text: stamp(snap, "History is unavailable: this save has no playthrough id or history storage is off.") },
+            {
+              type: "text",
+              text: stamp(
+                snap,
+                "History is unavailable: this save has no playthrough id or history storage is off.",
+              ),
+            },
           ],
         };
       }
@@ -40,7 +46,9 @@ export function registerHistoryTool(server: McpServer, cache: SnapshotCache) {
       // always includes the current save (idempotent by timer).
       await cache.history.record(snap).catch(() => {});
       const entries = await cache.history.read(id);
-      return { content: [{ type: "text", text: stamp(snap, renderHistory(entries, limit ?? 20)) }] };
+      return {
+        content: [{ type: "text", text: stamp(snap, renderHistory(entries, limit ?? 20)) }],
+      };
     },
   );
 }

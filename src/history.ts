@@ -72,15 +72,17 @@ export class HistoryStore {
     if (!id || timer === null || !/^[0-9a-f-]{8,64}$/i.test(id)) return;
     // Serialize read-modify-write per playthrough so concurrent records don't clobber each other.
     const prev = this.queues.get(id) ?? Promise.resolve();
-    const run = prev.catch(() => {}).then(async () => {
-      const entries = (await this.read(id)).filter((e) => e.timer !== timer);
-      entries.push(entryFromSnapshot(snap));
-      entries.sort((a, b) => a.timer - b.timer);
-      await mkdir(this.dir, { recursive: true });
-      const tmp = `${this.file(id)}.${process.pid}.${Date.now()}.tmp`;
-      await writeFile(tmp, JSON.stringify(entries));
-      await rename(tmp, this.file(id));
-    });
+    const run = prev
+      .catch(() => {})
+      .then(async () => {
+        const entries = (await this.read(id)).filter((e) => e.timer !== timer);
+        entries.push(entryFromSnapshot(snap));
+        entries.sort((a, b) => a.timer - b.timer);
+        await mkdir(this.dir, { recursive: true });
+        const tmp = `${this.file(id)}.${process.pid}.${Date.now()}.tmp`;
+        await writeFile(tmp, JSON.stringify(entries));
+        await rename(tmp, this.file(id));
+      });
     const tail = run.catch(() => {});
     this.queues.set(id, tail);
     try {
@@ -129,6 +131,7 @@ export function renderHistory(entries: HistoryEntry[], limit: number): string {
       `strength ${delta(first.strength, last.strength)}, titles ${delta(first.titles, last.titles)}, ` +
       `vassals ${delta(first.vassals, last.vassals)}`;
   }
-  body += "\n\n_Only saves read by this server are recorded; gaps mean the save was never queried._";
+  body +=
+    "\n\n_Only saves read by this server are recorded; gaps mean the save was never queried._";
   return body;
 }

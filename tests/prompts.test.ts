@@ -99,7 +99,13 @@ describe("ck3-succession-plan prompt", () => {
 
   test("drills down into guardians, marriage and rivals only on a trigger, capped", () => {
     const text = successionPlanText();
-    for (const t of ["guardians", "marriage_candidates", "court_candidates", "character", "prisoners"])
+    for (const t of [
+      "guardians",
+      "marriage_candidates",
+      "court_candidates",
+      "character",
+      "prisoners",
+    ])
       expect(text).toContain(`\`${t}\``);
     expect(text).toContain("only if `family` shows an unmarried adult heir");
     expect(text).toContain("Cap the follow-ups at 4");

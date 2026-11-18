@@ -5,7 +5,8 @@ import { extractPrisoners, type Prisoner } from "../extract/prisoners.js";
 import { SKILL_NOTE, formatEffective } from "../extract/skills.js";
 
 function prisonerBlock(p: Prisoner): string {
-  const where = p.type === "dungeon" ? "dungeon" : p.type === "house_arrest" ? "house arrest" : p.type;
+  const where =
+    p.type === "dungeon" ? "dungeon" : p.type === "house_arrest" ? "house arrest" : p.type;
   const held = p.years !== null ? `${p.years}y (since ${p.since})` : `since ${p.since}`;
   const head =
     `- ${p.name} (${p.id}, ${p.female ? "F" : "M"}${p.age !== null ? `, age ${p.age}` : ""}` +

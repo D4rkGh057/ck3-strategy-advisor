@@ -221,9 +221,7 @@ export function leadsFor(p: Prisoner): string[] {
       `Holds a claim on your ${p.claimsOnYou.join(", ")}: once free, they can become a figurehead for claimant factions or wars. Weigh that risk before releasing.`,
     );
   if (p.kinship && CLOSE_KIN.has(p.kinship))
-    out.push(
-      `${p.kinship} of yours: a release or marriage candidate rather than ransom fodder.`,
-    );
+    out.push(`${p.kinship} of yours: a release or marriage candidate rather than ransom fodder.`);
   if (p.ruler && !(p.kinship && CLOSE_KIN.has(p.kinship))) {
     const bits = [
       p.ruler.strength !== null ? `army ~${Math.round(p.ruler.strength)}` : null,

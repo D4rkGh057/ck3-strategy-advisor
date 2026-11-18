@@ -11,7 +11,8 @@ function intentLabel(raw: string | null): string {
 }
 
 function army(a: RaidArmy, withOwner: boolean): string {
-  const men = a.men !== null ? `${a.men}${a.maxMen !== null ? `/${a.maxMen}` : ""} men` : "men unknown";
+  const men =
+    a.men !== null ? `${a.men}${a.maxMen !== null ? `/${a.maxMen}` : ""} men` : "men unknown";
   const state = a.active
     ? `RAIDING, ${intentLabel(a.intent)}, progress ${a.progress ?? "?"}, loot ${a.loot ?? 0} gold`
     : "raid-capable, not raiding";

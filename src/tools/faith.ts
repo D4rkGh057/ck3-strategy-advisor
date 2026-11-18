@@ -16,14 +16,21 @@ export function registerFaithTool(server: McpServer, cache: SnapshotCache) {
     async () => {
       const snap = await cache.get();
       if ("error" in snap) return { isError: true, content: [{ type: "text", text: snap.error }] };
-      const result = await cache.memoQuery("faith", (q) => ({ faith: extractFaith(q, cache.loc, cache.lookup) }));
+      const result = await cache.memoQuery("faith", (q) => ({
+        faith: extractFaith(q, cache.loc, cache.lookup),
+      }));
       if ("error" in result)
         return { isError: true, content: [{ type: "text", text: result.error }] };
       const f = result.faith;
 
       if (!f.riteName && f.tenets.length === 0 && f.doctrines.length === 0)
         return {
-          content: [{ type: "text", text: stamp(snap, "No faith data found for your character in this save.") }],
+          content: [
+            {
+              type: "text",
+              text: stamp(snap, "No faith data found for your character in this save."),
+            },
+          ],
         };
 
       let body = `# Faith: ${f.riteName ?? "unknown"}`;

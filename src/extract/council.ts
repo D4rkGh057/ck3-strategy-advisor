@@ -249,7 +249,9 @@ export function suggestCouncil(info: CouncilInfo): Assignment[] {
     Math.max(score(c, role), 0) + (info.seats[role] === c.id ? 0.01 : 0);
   const contenders = new Set<number>();
   for (const role of roles)
-    for (const c of [...pool].sort((a, b) => weight(b, role) - weight(a, role)).slice(0, roles.length))
+    for (const c of [...pool]
+      .sort((a, b) => weight(b, role) - weight(a, role))
+      .slice(0, roles.length))
       contenders.add(c.id);
   const search = pool.filter((c) => contenders.has(c.id)); // keeps pool order
 

@@ -87,7 +87,9 @@ test("other rulers' raids list only active ones, with the owner's name", async (
 });
 
 test("a save with no raid section returns empty lists instead of throwing", async () => {
-  const bare = Buffer.from(`date=1066.1.1\nplayed_character={ character=1 }\nliving={ 1={ first_name="A" } }\n`);
+  const bare = Buffer.from(
+    `date=1066.1.1\nplayed_character={ character=1 }\nliving={ 1={ first_name="A" } }\n`,
+  );
   const r = await run(bare);
   expect(r).toEqual({ mine: [], others: [], worldActive: 0 });
 });

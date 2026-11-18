@@ -115,7 +115,10 @@ test("another owner's longer routes do not widen your route length", async () =>
 });
 
 test("without a route of your own the game's base length applies, calibrated on other routes", async () => {
-  const gs = GS.replace("owner=1 mode=profit trade_markets={ 100 102 }", "owner=2 mode=profit trade_markets={ 100 102 }");
+  const gs = GS.replace(
+    "owner=1 mode=profit trade_markets={ 100 102 }",
+    "owner=2 mode=profit trade_markets={ 100 102 }",
+  );
   const { game, loc } = geo();
   const info = (await queryGamestate(Buffer.from(gs), (q) =>
     extractTradeSuggestions(q, loc, game, GOODS),
