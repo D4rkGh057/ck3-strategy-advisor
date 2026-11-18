@@ -1,6 +1,7 @@
 import type { Query } from "../parser.js";
 import type { Localizer } from "../localization.js";
-import { SKILLS, type GameLookup, type Skill } from "../gameLookup.js";
+import type { GameLookup } from "../gameLookup.js";
+import { SKILLS, type Skill } from "../gameScript.js";
 import { idList } from "./common.js";
 
 export type SkillSet = Record<Skill, number>;

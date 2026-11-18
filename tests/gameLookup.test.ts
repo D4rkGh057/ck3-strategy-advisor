@@ -2,7 +2,8 @@ import { expect, test } from "vitest";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { GameLookup, parseTopLevel } from "../src/gameLookup.js";
+import { GameLookup } from "../src/gameLookup.js";
+import { parseTopLevel } from "../src/gameScript.js";
 import { Localizer } from "../src/localization.js";
 
 // Game files start with a UTF-8 BOM; keep it so the parser is exercised on real input.

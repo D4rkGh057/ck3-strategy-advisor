@@ -1,6 +1,7 @@
 import type { Query } from "../parser.js";
 import type { Localizer } from "../localization.js";
-import type { GameLookup, Skill } from "../gameLookup.js";
+import type { GameLookup } from "../gameLookup.js";
+import type { Skill } from "../gameScript.js";
 import { ageAt, idList, num, playerIdOf } from "./common.js";
 import { Kin, buildParentIndex, type ParentIndexStore } from "./family.js";
 import { fullNameOf } from "./names.js";
