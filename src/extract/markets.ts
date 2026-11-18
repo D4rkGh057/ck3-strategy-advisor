@@ -2,7 +2,7 @@ import type { Query } from "../parser.js";
 import type { Localizer } from "../localization.js";
 import { idList, num, playerIdOf } from "./common.js";
 import { realmMarketIds } from "./trade.js";
-import { capitalDuchy, flowTotals } from "./tradeSuggestions.js";
+import { capitalDuchy, distributionExports, flowTotals } from "./tradeSuggestions.js";
 import { resolveTitleName } from "./titleUtils.js";
 
 type Rec = Record<string, unknown>;
@@ -73,8 +73,12 @@ export function extractMarkets(
     const routeIds = idList(m["trade_routes"]);
     const surplus: GoodAmount[] = [];
     const deficit: GoodAmount[] = [];
+    const taken = distributionExports(routes, m, id);
     goods.forEach((good, i) => {
-      const t = flowTotals((m["good_balances"] as Rec | undefined)?.[String(i)] as Rec | undefined);
+      const t = flowTotals(
+        (m["good_balances"] as Rec | undefined)?.[String(i)] as Rec | undefined,
+        taken.get(good) ?? 0,
+      );
       if (t.sell >= MIN_AMOUNT) surplus.push({ good, amount: t.sell });
       if (t.want >= MIN_AMOUNT) deficit.push({ good, amount: t.want });
     });

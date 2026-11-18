@@ -39,9 +39,9 @@ export function registerMarketsTool(server: McpServer, cache: SnapshotCache) {
         "routes cross, and the one of your capital's duchy. For each: how many routes cross it (and how many are " +
         "yours), the goods with unsold surplus and the goods with unmet need, in units, largest first. Use it to see " +
         "where there is room for a new route or where a market is saturated; `trade_suggestions` ranks concrete " +
-        "pairs. Surplus is surplus minus import_only_need (the trade-hub need) and need is need minus " +
-        "distribution_import, as the game's market panel shows them (verified on one save); exports and plain imports " +
-        "are not subtracted. Goods are named from the game files (CK3_GAME_DIR), because the save keys them " +
+        "pairs. Surplus is surplus minus import_only_need (the trade-hub need) and minus what distribution routes take out, and need is need minus " +
+        "distribution_import, as the game's market panel shows them (verified on one save); other exports and plain imports " +
+        "(the aggregate export field) are not subtracted. Goods are named from the game files (CK3_GAME_DIR), because the save keys them " +
         "by position; without them the tool refuses rather than guess. Not in the save: prices per market, " +
         "which markets can be connected, or per-market income.",
       inputSchema: {},

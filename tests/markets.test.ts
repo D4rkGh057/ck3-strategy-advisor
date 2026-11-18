@@ -79,3 +79,25 @@ test("renders one line per market", async () => {
     "- b_a (100) [realm, own route] — 1 route(s) (1 yours); unsold surplus: grain 50; unmet need: salt 25",
   );
 });
+
+test("subtracts what distribution routes buy at the market from its surplus, not the aggregate export", async () => {
+  // A distribution route buys 15 grain at market 100 (surplus 50): 35 remains. A profit route doing
+  // the same would not count, and neither does the plain `export` (10) on the balance.
+  const gs = GS.replace(
+    "titles={ 11 } trade_routes={ 0 }",
+    "titles={ 11 } trade_routes={ 0 2 3 }",
+  ).replace(
+    "  1={ owner=2 mode=profit trade_markets={ 101 } }",
+    `  1={ owner=2 mode=profit trade_markets={ 101 } }
+  2={ owner=2 mode=distribution trade_markets={ 100 101 }
+      transactions={ trade_market=100 trade_good=trade_good_grain type=buy amount=10 price_per_unit=0.1 }
+      transactions={ trade_market=100 trade_good=trade_good_grain type=buy amount=5 price_per_unit=0.1 }
+      transactions={ trade_market=101 trade_good=trade_good_grain type=sell amount=15 price_per_unit=0.1 } }
+  3={ owner=2 mode=profit trade_markets={ 100 101 }
+      transactions={ trade_market=100 trade_good=trade_good_grain type=buy amount=20 price_per_unit=0.1 } }`,
+  );
+  const info = (await queryGamestate(Buffer.from(gs), (q) =>
+    extractMarkets(q, new Localizer(null), GOODS),
+  ))!;
+  expect(info.markets[0]!.surplus).toEqual([{ good: "trade_good_grain", amount: 35 }]);
+});

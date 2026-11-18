@@ -81,17 +81,49 @@ export function capitalDuchy(q: Query, playerId: number): number | null {
 }
 
 /**
+ * What distribution-mode routes take out of a market, per good key: the `buy` transactions of the
+ * distribution routes crossing it. The save has no field for the panel's "distribution exports"
+ * (they sit inside the aggregate `export`), but these transactions match them: 15 meat on the
+ * 1067 test save, equal to the panel's -15.
+ */
+export function distributionExports(
+  routes: Record<string, Rec>,
+  market: Rec | undefined,
+  marketId: number,
+): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const id of idList(market?.["trade_routes"])) {
+    const r = routes[String(id)];
+    if (!r || r["mode"] !== "distribution") continue;
+    const txs = Array.isArray(r["transactions"]) ? r["transactions"] : [r["transactions"]];
+    for (const t of txs as (Rec | undefined)[]) {
+      const good = t?.["trade_good"];
+      const amount = num(t?.["amount"]);
+      if (
+        t?.["trade_market"] === marketId &&
+        t["type"] === "buy" &&
+        typeof good === "string" &&
+        amount !== null
+      )
+        out.set(good, (out.get(good) ?? 0) + amount);
+    }
+  }
+  return out;
+}
+
+/**
  * Units a market has available to sell and still wants, as the game's market panel shows them
  * (verified on a 1067 save against the panel): surplus minus the trade-hub need
- * (`import_only_need`), and need minus what distribution routes already deliver
- * (`distribution_import`). `export` and plain `import` are not subtracted.
+ * (`import_only_need`) and minus what distribution routes already take out (`distExport`, see
+ * `distributionExports`); need minus what distribution routes already deliver
+ * (`distribution_import`). The aggregate `export` and plain `import` are not subtracted.
  */
-export function flowTotals(r: Rec | undefined): { sell: number; want: number } {
+export function flowTotals(r: Rec | undefined, distExport = 0): { sell: number; want: number } {
   const surplus = num(r?.["surplus"]) ?? 0;
   const hubNeed = num(r?.["import_only_need"]) ?? 0;
   const need = num(r?.["need"]) ?? 0;
   const delivered = num(r?.["distribution_import"]) ?? 0;
-  return { sell: Math.max(0, surplus - hubNeed), want: Math.max(0, need - delivered) };
+  return { sell: Math.max(0, surplus - hubNeed - distExport), want: Math.max(0, need - delivered) };
 }
 
 /**
@@ -300,10 +332,15 @@ export function extractTradeSuggestions(
     return sell * priceMult(good, "sell") - buy * priceMult(good, "buy");
   };
 
-  const balance = (id: number, g: number): { sell: number; want: number } =>
-    flowTotals(
+  const distExports = new Map<number, Map<string, number>>();
+  const balance = (id: number, g: number): { sell: number; want: number } => {
+    if (!distExports.has(id))
+      distExports.set(id, distributionExports(routes, markets[String(id)], id));
+    return flowTotals(
       (markets[String(id)]?.["good_balances"] as Rec | undefined)?.[String(g)] as Rec | undefined,
+      distExports.get(id)!.get(goods[g]!) ?? 0,
     );
+  };
 
   const out: Suggestion[] = [];
   for (const a of anchorIds) {
