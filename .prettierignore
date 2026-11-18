@@ -6,6 +6,7 @@ package-lock.json
 .superpowers/
 .claude/
 .atl/
+.codegraph/
 
 # Test fixtures mimic real CK3 save/localization formats — keep verbatim.
 tests/fixtures/
