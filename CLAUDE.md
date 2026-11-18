@@ -25,7 +25,7 @@ npm run lint          # eslint; npm run format:check for prettier
 
 `source.ts` (newest parseable text `.ck3`; skips binary and Ironman) -> `envelope.ts` (PKZIP -> gamestate; Ironman = plaintext `meta_data={` marker, throws `IronmanError`) -> `parser.ts` (lazy jomini WASM, `Query.at(pointer)`) -> `snapshot.ts` (one parse feeds every extractor) -> `cache.ts` (keyed `path:mtimeMs`, coalesces builds, keeps last good snapshot on a mid-write failure, `query()` for a fresh pass) -> `extract/*.ts` (pure `(q, loc, ...) => Info`, no I/O, no MCP; save-field knowledge lives here) -> `tools/*.ts`.
 
-Tools are built on `tools/kit.ts` (`loadQuery`, `run`, `stamped`, `errorResult`); use `stamp` and `truncate` from `format.ts` in every new tool. `localization.ts` loads English `.yml` from `CK3_GAME_DIR` and falls back to raw keys.
+Tools are built on `tools/kit.ts` (`loadQuery`, `run`, `stamped`, `errorResult`); use `stamp` and `truncate` from `format.ts` in every new tool. `localization.ts` loads English `.yml` from `CK3_GAME_DIR` (else the Steam install found by `discoverGameDir` in `config.ts`) and falls back to raw keys.
 
 ## Module rules
 

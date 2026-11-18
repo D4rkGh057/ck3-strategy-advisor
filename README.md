@@ -34,9 +34,9 @@ auto-discovery as a fallback (native Windows, including OneDrive-redirected `Doc
 | Variable       | Purpose                             | Default                                                                                                                                                                                               |
 | -------------- | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `CK3_SAVE_DIR` | Folder containing your `.ck3` saves | auto-discovered at `%OneDrive%` / `%USERPROFILE%\OneDrive` / `%USERPROFILE%` + `Documents` or `Documentos` + `Paradox Interactive/Crusader Kings III/save games`, else `/mnt/c/Users/*/Documents/...` |
-| `CK3_GAME_DIR` | CK3 game install (for localization) | `/mnt/c/Program Files (x86)/Steam/steamapps/common/Crusader Kings III/game`                                                                                                                           |
+| `CK3_GAME_DIR` | CK3 game install (for localization) | auto-discovered in the Steam libraries (`<steam>/steamapps/common/Crusader Kings III`, including extra libraries listed in `libraryfolders.vdf`)                                                      |
 
-`CK3_GAME_DIR` is optional. Without it, titles/traits are shown as their raw game
+`CK3_GAME_DIR` is optional and only needed for non-Steam installs (Game Pass, GOG, manual copies) or to override the discovered one. If the game is not found, titles/traits are shown as their raw game
 keys instead of localized names — everything else still works.
 
 The server reads the **newest readable** `.ck3` in the save directory. CK3

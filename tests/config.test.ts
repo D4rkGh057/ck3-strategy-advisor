@@ -58,3 +58,45 @@ test("falls back to WSL /mnt/c/Users scan, and returns null when nothing exists"
   );
   expect(await discoverSaveDir({ env: {}, usersRoot: NO_WSL })).toBeNull();
 });
+
+import { writeFileSync } from "node:fs";
+import { discoverGameDir } from "../src/config.js";
+
+function steamRoot(): string {
+  const root = mkdtempSync(join(tmpdir(), "ck3-steam-"));
+  mkdirSync(join(root, "steamapps"), { recursive: true });
+  return root;
+}
+function install(library: string): string {
+  const dir = join(library, "steamapps", "common", "Crusader Kings III");
+  mkdirSync(join(dir, "game", "localization", "english"), { recursive: true });
+  return dir;
+}
+
+test("finds the game in the main Steam library", async () => {
+  const root = steamRoot();
+  const dir = install(root);
+  expect(await discoverGameDir({ env: {}, steamRoots: [root] })).toBe(dir);
+});
+
+test("finds the game in a second library listed in libraryfolders.vdf", async () => {
+  const root = steamRoot();
+  const second = mkdtempSync(join(tmpdir(), "ck3-lib2-"));
+  const dir = install(second);
+  // Steam doubles the backslashes of Windows paths in the vdf.
+  const vdfPath = second.replaceAll("\\", "\\\\");
+  writeFileSync(
+    join(root, "steamapps", "libraryfolders.vdf"),
+    `"libraryfolders"\n{\n\t"0"\n\t{\n\t\t"path"\t\t"${vdfPath}"\n\t}\n}\n`,
+  );
+  expect(await discoverGameDir({ env: {}, steamRoots: [root] })).toBe(dir);
+});
+
+test("ignores an install folder without game files, and returns null when absent", async () => {
+  const root = steamRoot();
+  mkdirSync(join(root, "steamapps", "common", "Crusader Kings III"), { recursive: true });
+  expect(await discoverGameDir({ env: {}, steamRoots: [root] })).toBeNull();
+  expect(
+    await discoverGameDir({ env: {}, steamRoots: [join(tmpdir(), "ck3-no-steam")] }),
+  ).toBeNull();
+});

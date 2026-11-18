@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { resolveConfig, discoverSaveDir } from "./config.js";
+import { resolveConfig, discoverSaveDir, discoverGameDir } from "./config.js";
 import { SaveFileSource } from "./source.js";
 import { SnapshotCache } from "./cache.js";
 import { Localizer } from "./localization.js";
@@ -20,10 +20,11 @@ async function main() {
     console.error("No CK3 save dir found. Set CK3_SAVE_DIR.");
     process.exit(1);
   }
+  const gameDir = cfg.gameDir ?? (await discoverGameDir());
   const cache = new SnapshotCache(
     new SaveFileSource({ saveDir }),
-    new Localizer(cfg.gameDir, modLocalizationDirs(dirname(saveDir))),
-    new GameData(cfg.gameDir),
+    new Localizer(gameDir, modLocalizationDirs(dirname(saveDir))),
+    new GameData(gameDir),
     new HistoryStore(defaultHistoryDir()),
   );
   const server = new McpServer(
