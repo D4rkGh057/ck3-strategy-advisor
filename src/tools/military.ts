@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { SnapshotCache } from "../cache.js";
-import { stamp, truncate } from "../format.js";
+import { truncate } from "../format.js";
+import { READ_ONLY, errorResult, loadSnapshot, stamped } from "./kit.js";
 
 export function registerMilitaryTool(server: McpServer, cache: SnapshotCache) {
   server.registerTool(
@@ -12,12 +13,12 @@ export function registerMilitaryTool(server: McpServer, cache: SnapshotCache) {
         "(type, size, where stationed), and ongoing wars (side, casus belli, target, war score). " +
         "Men-at-arms hired by vassals are not included.",
       inputSchema: {},
-      annotations: { readOnlyHint: true, openWorldHint: false },
+      annotations: READ_ONLY,
     },
     async () => {
-      const snap = await cache.get();
-      if ("error" in snap) return { isError: true, content: [{ type: "text", text: snap.error }] };
-      const m = snap.military;
+      const snap = await loadSnapshot(cache);
+      if (!snap.ok) return errorResult(snap.error);
+      const m = snap.value.military;
 
       const levyStr = m.levy !== null ? Math.round(m.levy).toString() : "?";
       const strengthStr = m.strength !== null ? Math.round(m.strength).toString() : "?";
@@ -52,7 +53,7 @@ export function registerMilitaryTool(server: McpServer, cache: SnapshotCache) {
         body += note;
       }
 
-      return { content: [{ type: "text", text: stamp(snap, body) }] };
+      return stamped(snap.value, body);
     },
   );
 }
