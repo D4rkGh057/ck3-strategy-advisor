@@ -37,7 +37,9 @@ export interface Suggestion {
 export interface TradeSuggestionsInfo {
   goodsAvailable: boolean;
   anchors: MarketRef[];
-  /** 90th-percentile hop between two markets of an existing route: the only reach the save reveals. */
+  /** Route length used to cut candidates (province hops) and how it was obtained. */
+  routeLength: RouteLengthInfo;
+  /** Distance equivalent of `routeLength` on this map; null when distances are unavailable. */
   reach: number | null;
   priceSamples: number;
   /** Expertise levels were applied to the scores (needs the category data and the XP array). */
@@ -46,6 +48,22 @@ export interface TradeSuggestionsInfo {
 }
 
 const TOP = 15;
+/** `BASE_MAX_TRADE_ROUTE_LENGTH` in the game's defines: province hops a profit route may span. */
+const BASE_ROUTE_LENGTH = 10;
+
+export interface RouteLengthInfo {
+  /** Longest route you run in hops (`own`), or the game's base length when you run none (`base`). */
+  maxHops: number;
+  basis: "own" | "base";
+  /** Province hops per unit of straight-line distance seen in existing routes. */
+  hopsPerDistance: number | null;
+}
+
+interface RouteSample {
+  own: boolean;
+  hops: number;
+  geometric: number | null;
+}
 
 function flowTotals(r: Rec | undefined): { sell: number; want: number } {
   const surplus = num(r?.["surplus"]) ?? 0;
@@ -60,7 +78,8 @@ function flowTotals(r: Rec | undefined): { sell: number; want: number } {
  * routes and of your capital) against every other market, by how much unsold surplus of one side
  * meets unmet need on the other, valued at the average price seen in route transactions.
  * The save does not say which pairs can be connected, nor route limits or costs, so candidates are
- * cut to the 90th-percentile hop that existing routes already make. When the category data is
+ * cut to the route length: the longest route you run (in province hops), turned into a distance
+ * with the hops-per-distance ratio of existing routes. When the category data is
  * available, flows in categories you hold expertise in are valued with the category's per-level
  * price modifiers, and each pair lists the categories where it would keep or grow your XP.
  */
@@ -79,6 +98,7 @@ export function extractTradeSuggestions(
     return {
       goodsAvailable: false,
       anchors: [],
+      routeLength: { maxHops: BASE_ROUTE_LENGTH, basis: "base", hopsPerDistance: null },
       reach: null,
       priceSamples: 0,
       expertiseApplied: false,
@@ -103,7 +123,7 @@ export function extractTradeSuggestions(
 
   // Reference prices and the reach seen in existing routes.
   const sums = new Map<string, { total: number; n: number }>();
-  const hops: number[] = [];
+  const samples: RouteSample[] = [];
   const linked = new Set<string>();
   const ownMarkets = new Set<number>();
   const ownRouteIds: number[] = [];
@@ -127,13 +147,45 @@ export function extractTradeSuggestions(
       for (const b of ms) {
         if (a >= b) continue;
         if (r["owner"] === playerId) linked.add(`${a}-${b}`);
-        const d = dist(a, b);
-        if (d !== null) hops.push(d);
       }
     if (r["owner"] === playerId) ms.forEach((m) => ownMarkets.add(m));
+    // Profit routes reveal how many province hops a route takes (`path` lists its provinces) and,
+    // against the straight-line distance between its stops, how winding routes are on this map.
+    const pathLen = Array.isArray(r["path"]) ? r["path"].length : 0;
+    if (r["mode"] === "profit" && pathLen >= 2) {
+      let geometric = 0;
+      let known = true;
+      for (let i = 1; i < ms.length; i++) {
+        const d = dist(ms[i - 1]!, ms[i]!);
+        if (d === null) known = false;
+        else geometric += d;
+      }
+      samples.push({
+        own: r["owner"] === playerId,
+        hops: pathLen - 1,
+        geometric: known && ms.length >= 2 ? geometric : null,
+      });
+    }
   }
-  hops.sort((a, b) => a - b);
-  const reach = hops.length > 0 ? hops[Math.floor((hops.length - 1) * 0.9)]! : null;
+  // The route length limit is not stored, so the longest route you already run is the only proof of
+  // it (the real limit may be higher); without one, the game's base value is all that is known.
+  const ownSamples = samples.filter((s) => s.own);
+  const maxHops =
+    ownSamples.length > 0 ? Math.max(...ownSamples.map((s) => s.hops)) : BASE_ROUTE_LENGTH;
+  // Hops per unit of distance, from your own routes when they can be measured, else from all.
+  const calibrate = (set: RouteSample[]): number | null => {
+    const m = set.filter((s) => s.geometric !== null && s.geometric > 0);
+    const geo = m.reduce((t, s) => t + s.geometric!, 0);
+    return geo > 0 ? m.reduce((t, s) => t + s.hops, 0) / geo : null;
+  };
+  const hopsPerDistance = calibrate(ownSamples) ?? calibrate(samples);
+  const routeLength: RouteLengthInfo = {
+    maxHops,
+    basis: ownSamples.length > 0 ? "own" : "base",
+    hopsPerDistance,
+  };
+  // Distance beyond which a pair would need more hops than the route length allows.
+  const reach = hopsPerDistance !== null ? maxHops / hopsPerDistance : null;
   let totalP = 0;
   let totalN = 0;
   for (const s of sums.values()) {
@@ -240,6 +292,7 @@ export function extractTradeSuggestions(
   return {
     goodsAvailable: true,
     anchors: [...anchorIds].map(mk),
+    routeLength,
     reach,
     priceSamples: totalN,
     expertiseApplied,

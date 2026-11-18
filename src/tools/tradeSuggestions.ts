@@ -45,8 +45,10 @@ export function registerTradeSuggestionsTool(server: McpServer, cache: SnapshotC
         "markets are those of your realm, of your own routes and of your capital's duchy; pairs you already link " +
         "are skipped. Goods are named from the game files (CK3_GAME_DIR), because the save keys them by position; " +
         "without them the tool refuses rather than guess. Limits: the save does not say which markets CAN be " +
-        "connected, nor route limits, costs or income, so candidates are cut to the 90th-percentile hop an existing route " +
-        "already makes (when province distances are available) and the score is a ranking estimate, not a profit. " +
+        "connected, nor your route length limit (province hops, +10 base plus modifiers), costs or income, so candidates " +
+        "are cut to the longest route you already run (the game's base of 10 if you run none), converted to a " +
+        "distance with the hops-per-distance ratio of existing routes (when province distances are available): an " +
+        "estimate that can under- or over-state the real limit. The score is a ranking estimate, not a profit. " +
         "Surplus is read as surplus minus export and need as need minus import, an inference from the save fields. " +
         "With the game files available, goods of categories where you hold trade expertise are valued with the " +
         "category's per-level price modifier (usually +0.1% sell price per level, so a small effect), and each pair " +
@@ -88,10 +90,15 @@ export function registerTradeSuggestionsTool(server: McpServer, cache: SnapshotC
       body += info.expertiseApplied
         ? "Scores include your trade expertise (per-level price modifiers).\n"
         : "Scores do not include trade expertise (category data or XP not available).\n";
+      const len = info.routeLength;
+      const lenWhy =
+        len.basis === "own"
+          ? `the longest route you run is ${len.maxHops} hops; your real limit may be higher`
+          : `you run no profit route, so the game's base of ${len.maxHops} hops is assumed`;
       body +=
         info.reach !== null
-          ? `Candidates limited to distance ≤ ${Math.round(info.reach)} (90th-percentile hop of existing routes).\n\n`
-          : "No distance data: candidates are not limited by reach, so far pairs may not be connectable.\n\n";
+          ? `Route length: ${len.maxHops} province hops (${lenWhy}). Candidates limited to distance ≤ ${Math.round(info.reach)} (estimated from ${len.hopsPerDistance!.toFixed(3)} hops per distance unit in existing routes).\n\n`
+          : `Route length: ${len.maxHops} province hops (${lenWhy}). No distance data: candidates are not limited, so far pairs may exceed it.\n\n`;
       if (info.suggestions.length === 0)
         body += "No pair with unsold surplus meeting unmet need.\n";
       else body += info.suggestions.map((s) => line(cache, s)).join("");

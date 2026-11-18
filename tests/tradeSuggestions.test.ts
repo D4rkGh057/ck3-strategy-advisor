@@ -34,7 +34,7 @@ trade_markets={ database={
     good_balances={ 0=${bal({ surplus: 0, export: 0, need: 100, import: 0 })} 1=${bal({ surplus: 90, export: 0, need: 0, import: 0 })} } }
 } }
 trade_routes={ database={
-  0={ owner=1 mode=profit trade_markets={ 100 102 }
+  0={ owner=1 mode=profit trade_markets={ 100 102 } path={ 1 5 3 }
       transactions={ trade_market=100 trade_good=trade_good_grain type=buy amount=1 price_per_unit=0.1 }
       transactions={ trade_market=100 trade_good=trade_good_salt type=sell amount=1 price_per_unit=0.2 } }
 } }
@@ -81,8 +81,47 @@ test("candidates farther than the reach seen in existing routes are dropped", as
     distance: (a: number, b: number) => pos[`${Math.min(a, b)}-${Math.max(a, b)}`] ?? null,
   });
   const info = await run(GOODS, game, loc);
-  expect(info.reach).toBe(10); // the only existing hop: 100 <-> 102
+  // Own route 100 <-> 102: 2 hops over distance 10, so 2 hops per 10 and a limit of 2 hops = 10.
+  expect(info.routeLength).toEqual({ maxHops: 2, basis: "own", hopsPerDistance: 0.2 });
+  expect(info.reach).toBeCloseTo(10, 6);
   expect(info.suggestions.map((x) => x.other.id)).toEqual([101]);
+});
+
+const geo = () => {
+  const game = new GameData(null);
+  game.baronyProvince.set("b_a", 1);
+  game.baronyProvince.set("b_b", 2);
+  game.baronyProvince.set("b_c", 3);
+  game.baronyProvince.set("b_d", 4);
+  const pos: Record<string, number> = { "1-3": 10, "1-2": 50, "1-4": 5 };
+  const loc = Object.assign(new Localizer(null), {
+    distance: (a: number, b: number) => pos[`${Math.min(a, b)}-${Math.max(a, b)}`] ?? null,
+  });
+  return { game, loc };
+};
+
+test("another owner's longer routes do not widen your route length", async () => {
+  // Owner 2 runs a 20-hop route; it still must not raise the limit above your own 2 hops.
+  const gs = GS.replace(
+    "  0={ owner=1 mode=profit",
+    "  1={ owner=2 mode=profit trade_markets={ 101 103 } path={ 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 } }\n  0={ owner=1 mode=profit",
+  );
+  const { game, loc } = geo();
+  const info = (await queryGamestate(Buffer.from(gs), (q) =>
+    extractTradeSuggestions(q, loc, game, GOODS),
+  ))!;
+  expect(info.routeLength.maxHops).toBe(2);
+  expect(info.routeLength.basis).toBe("own");
+});
+
+test("without a route of your own the game's base length applies, calibrated on other routes", async () => {
+  const gs = GS.replace("owner=1 mode=profit trade_markets={ 100 102 }", "owner=2 mode=profit trade_markets={ 100 102 }");
+  const { game, loc } = geo();
+  const info = (await queryGamestate(Buffer.from(gs), (q) =>
+    extractTradeSuggestions(q, loc, game, GOODS),
+  ))!;
+  expect(info.routeLength).toEqual({ maxHops: 10, basis: "base", hopsPerDistance: 0.2 });
+  expect(info.reach).toBeCloseTo(50, 6);
 });
 
 // Category data: "staples" covers grain and pays +10% per level when selling; expertise XP sits on
