@@ -14,9 +14,15 @@ function categoryName(cache: SnapshotCache, key: string): string {
   return v !== key ? v : key.replace(/^trade_category_/, "").replace(/_/g, " ");
 }
 
-function line(cache: SnapshotCache, s: Suggestion): string {
+/**
+ * One markdown bullet for a pair, or null when no flow is worth showing. Flows under half a unit
+ * would render as "0 <good> (+0.00)", so they are left out of the text (the score still counts them).
+ */
+export function line(cache: SnapshotCache, s: Suggestion): string | null {
+  const visible = s.flows.filter((f) => Math.round(f.amount) >= 1);
+  if (visible.length === 0) return null;
   // The route buys where the good is in surplus and sells where it is needed (the game's own wording).
-  const flows = s.flows
+  const flows = visible
     .map((f) => {
       const [from, to] = f.direction === "out" ? [s.anchor, s.other] : [s.other, s.anchor];
       return `${Math.round(f.amount)} ${goodName(cache, f.good)} (buy ${from.place}, sell ${to.place}, +${f.profit.toFixed(2)})`;
@@ -91,7 +97,8 @@ export function registerTradeSuggestionsTool(server: McpServer, cache: SnapshotC
           "No anchor markets: you hold no county in a market, own no route, and your capital has no market.",
         );
 
-      let body = `# Trade route suggestions (${info.suggestions.length})\n\n`;
+      const lines = info.suggestions.map((s) => line(cache, s)).filter((l) => l !== null);
+      let body = `# Trade route suggestions (${lines.length})\n\n`;
       body += `Anchors: ${info.anchors.map((m) => `${m.place} (${m.id})`).join(", ")}\n`;
       body += info.expertiseApplied
         ? "Scores include your trade expertise (per-level price modifiers).\n"
@@ -105,9 +112,8 @@ export function registerTradeSuggestionsTool(server: McpServer, cache: SnapshotC
         info.reach !== null
           ? `Route length: ${len.maxHops} province hops (${lenWhy}). Candidates limited to distance ≤ ${Math.round(info.reach)} (estimated from ${len.hopsPerDistance!.toFixed(3)} hops per distance unit in existing routes).\n\n`
           : `Route length: ${len.maxHops} province hops (${lenWhy}). No distance data: candidates are not limited, so far pairs may exceed it.\n\n`;
-      if (info.suggestions.length === 0)
-        body += "No pair with unsold surplus meeting unmet need.\n";
-      else body += info.suggestions.map((s) => line(cache, s)).join("");
+      if (lines.length === 0) body += "No pair with unsold surplus meeting unmet need.\n";
+      else body += lines.join("");
       body +=
         "\n_Scores estimate a route's gold balance (sell - buy). Connectability, impassable terrain and route limits are not in the save._\n";
       return say(body);
