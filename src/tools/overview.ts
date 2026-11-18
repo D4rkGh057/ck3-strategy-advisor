@@ -25,6 +25,15 @@ export function registerOverview(server: McpServer, cache: SnapshotCache) {
       if (!snapLoad.ok) return errorResult(snapLoad.error);
       const snap = snapLoad.value;
       const o = snap.overview;
+      // A merchant company has no legitimacy, levy or vassals: say so instead of a bare "?".
+      // Anything else that is missing stays "?" so a moved save path is not hidden.
+      const merchant = o.government === "merchant_government";
+      const legitimacy =
+        o.legitimacy === null && merchant ? "n/a (merchant company)" : fmt(o.legitimacy);
+      const vassals =
+        merchant && o.vassalsTowardsLimit === null && o.vassalLimit === null
+          ? "Vassals: n/a (merchant company)"
+          : `Vassals counting toward limit: ${o.vassalsTowardsLimit ?? "?"}/${o.vassalLimit ?? "?"} (the game's own count; see \`vassals\` for all direct vassals)`;
       const lines = [
         `# ${o.rulerName} — ${o.primaryTitle} (tier ${o.tier})`,
         `- House: ${o.house} | Age: ${o.age ?? "?"} | ${o.spouses > 0 ? `Married (${o.spouses} spouse${o.spouses > 1 ? "s" : ""})` : "Unmarried"}`,
@@ -32,8 +41,8 @@ export function registerOverview(server: McpServer, cache: SnapshotCache) {
           (o.goldExpenses !== null
             ? ` | Expenses (save field gold_expenses, meaning unverified): ${fmt(o.goldExpenses, 2)}`
             : ""),
-        `- Prestige: ${fmt(o.prestige)} (lifetime ${fmt(o.prestigeLifetime)}) | Piety: ${fmt(o.piety)} | Legitimacy: ${fmt(o.legitimacy)}`,
-        `- Holdings: ${o.holdings}/${o.domainLimit ?? "?"} domain limit | Vassals counting toward limit: ${o.vassalsTowardsLimit ?? "?"}/${o.vassalLimit ?? "?"} (the game's own count; see \`vassals\` for all direct vassals)`,
+        `- Prestige: ${fmt(o.prestige)} (lifetime ${fmt(o.prestigeLifetime)}) | Piety: ${fmt(o.piety)} | Legitimacy: ${legitimacy}`,
+        `- Holdings: ${o.holdings}/${o.domainLimit ?? "?"} domain limit | ${vassals}`,
       ];
       if (o.government) lines.push(`- Government: ${cache.loc.resolve(o.government)}`);
       if (o.laws.length > 0) lines.push(`- Laws: ${o.laws.join(", ")}`);

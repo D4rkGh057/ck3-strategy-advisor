@@ -20,12 +20,17 @@ export function registerMilitaryTool(server: McpServer, cache: SnapshotCache) {
       if (!snap.ok) return errorResult(snap.error);
       const m = snap.value.military;
 
-      const levyStr = m.levy !== null ? Math.round(m.levy).toString() : "?";
-      const strengthStr = m.strength !== null ? Math.round(m.strength).toString() : "?";
+      // A merchant company has no levy or strength in the save; other missing values stay "?".
+      const merchant = snap.value.overview.government === "merchant_government";
+      const missing = merchant ? "n/a" : "?";
+      const levyStr = m.levy !== null ? Math.round(m.levy).toString() : missing;
+      const strengthStr = m.strength !== null ? Math.round(m.strength).toString() : missing;
       const currentStr =
-        m.currentStrength !== null ? Math.round(m.currentStrength).toString() : "?";
+        m.currentStrength !== null ? Math.round(m.currentStrength).toString() : missing;
 
       let body = `# Military\n- Levy: ${levyStr} | Total strength: ${strengthStr} (current ${currentStr})\n`;
+      if (merchant && m.levy === null && m.strength === null)
+        body += "- Merchant company: no levy or standing strength in the save.\n";
 
       body += `## Men-at-arms (${m.menAtArms.length})\n`;
       if (m.menAtArms.length === 0) body += "None.\n";
