@@ -23,6 +23,24 @@ No character with id 1.",
       },
     ],
   },
+  "company": {
+    "content": [
+      {
+        "text": "_Snapshot: 1130.7.24 (read AGE)_
+
+# Company — unknown government
+Your government is not a merchant company; the fields below may be missing.
+- Trade competitiveness: ?
+- Influence: ?
+- Income: 12.30/month (gross) | Expenses: 1.50 (save field gold_expenses, meaning unverified)
+- Balance: ? (save field, meaning unverified)
+- Barter goods: none
+Routes and trade expertise: use the \`trade\` tool.
+",
+        "type": "text",
+      },
+    ],
+  },
   "council": {
     "content": [
       {
@@ -431,6 +449,15 @@ exports[`tool outputs > with no save 1`] = `
     "isError": true,
   },
   "character": {
+    "content": [
+      {
+        "text": "No CK3 save found. Save your game, then ask again.",
+        "type": "text",
+      },
+    ],
+    "isError": true,
+  },
+  "company": {
     "content": [
       {
         "text": "No CK3 save found. Save your game, then ask again.",
