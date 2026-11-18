@@ -16,7 +16,7 @@ function goodsText(cache: SnapshotCache, list: GoodAmount[]): string {
   if (list.length === 0) return "none";
   const shown = list
     .slice(0, TOP_GOODS)
-    .map((g) => `${goodName(cache, g.good)} ${Math.round(g.amount)}`);
+    .map((g) => `${goodName(cache, g.good)} ${Math.trunc(g.amount)}`);
   const more = list.length > TOP_GOODS ? `, +${list.length - TOP_GOODS} more` : "";
   return shown.join(", ") + more;
 }
@@ -39,8 +39,9 @@ export function registerMarketsTool(server: McpServer, cache: SnapshotCache) {
         "routes cross, and the one of your capital's duchy. For each: how many routes cross it (and how many are " +
         "yours), the goods with unsold surplus and the goods with unmet need, in units, largest first. Use it to see " +
         "where there is room for a new route or where a market is saturated; `trade_suggestions` ranks concrete " +
-        "pairs. Surplus is read as surplus minus export and need as need minus import, an inference from the save " +
-        "fields, not a documented rule. Goods are named from the game files (CK3_GAME_DIR), because the save keys them " +
+        "pairs. Surplus is surplus minus import_only_need (the trade-hub need) and need is need minus " +
+        "distribution_import, as the game's market panel shows them (verified on one save); exports and plain imports " +
+        "are not subtracted. Goods are named from the game files (CK3_GAME_DIR), because the save keys them " +
         "by position; without them the tool refuses rather than guess. Not in the save: prices per market, " +
         "which markets can be connected, or per-market income.",
       inputSchema: {},

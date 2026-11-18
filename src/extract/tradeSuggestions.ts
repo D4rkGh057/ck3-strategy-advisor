@@ -80,12 +80,18 @@ export function capitalDuchy(q: Query, playerId: number): number | null {
     : null;
 }
 
+/**
+ * Units a market has available to sell and still wants, as the game's market panel shows them
+ * (verified on a 1067 save against the panel): surplus minus the trade-hub need
+ * (`import_only_need`), and need minus what distribution routes already deliver
+ * (`distribution_import`). `export` and plain `import` are not subtracted.
+ */
 export function flowTotals(r: Rec | undefined): { sell: number; want: number } {
   const surplus = num(r?.["surplus"]) ?? 0;
-  const exported = num(r?.["export"]) ?? 0;
+  const hubNeed = num(r?.["import_only_need"]) ?? 0;
   const need = num(r?.["need"]) ?? 0;
-  const imported = num(r?.["import"]) ?? 0;
-  return { sell: Math.max(0, surplus - exported), want: Math.max(0, need - imported) };
+  const delivered = num(r?.["distribution_import"]) ?? 0;
+  return { sell: Math.max(0, surplus - hubNeed), want: Math.max(0, need - delivered) };
 }
 
 /**

@@ -22,9 +22,9 @@ export interface MarketSummary {
   links: MarketLink[];
   routes: number;
   ownRoutes: number;
-  /** Unsold surplus per good (surplus - export), largest first. */
+  /** Surplus available per good (surplus - hub need), largest first. */
   surplus: GoodAmount[];
-  /** Unmet need per good (need - import), largest first. */
+  /** Need still open per good (need - distribution import), largest first. */
   deficit: GoodAmount[];
 }
 
@@ -37,8 +37,8 @@ const MIN_AMOUNT = 0.5;
 
 /**
  * Your markets (realm, own routes, capital duchy) with what each has left unsold and what it
- * still lacks. Surplus and need follow the `trade_suggestions` inference (surplus - export,
- * need - import); the save keys goods by position in the game's good list, so without the list
+ * still lacks. Surplus and need follow the game's market panel (surplus - import_only_need,
+ * need - distribution_import); the save keys goods by position in the game's good list, so without the list
  * (`goods`) no good can be named and `goodsAvailable` is false.
  */
 export function extractMarkets(

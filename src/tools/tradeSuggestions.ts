@@ -62,7 +62,7 @@ export function registerTradeSuggestionsTool(server: McpServer, cache: SnapshotC
         "estimate that can under- or over-state the real limit. The score is an estimate: it assumes the route " +
         "carries every good listed (routes with several goods exist, but the save does not say how many a route can " +
         "carry), ignores caravan capacity and stop limits, and a pair is only two stops. " +
-        "Surplus is read as surplus minus export and need as need minus import, an inference from the save fields. " +
+        "Surplus is surplus minus import_only_need and need is need minus distribution_import, as the game's market panel shows them (verified on one save)." +
         "With the game files available, goods of categories where you hold trade expertise are valued with the " +
         "category's per-level price modifier (usually +0.1% sell price per level, so a small effect), and each pair " +
         "lists the categories where it would keep or grow your XP, flagging those no route of yours covers now. " +

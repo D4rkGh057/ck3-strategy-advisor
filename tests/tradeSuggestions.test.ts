@@ -75,6 +75,30 @@ test("a good seen on only one side takes the other side from the sell/buy ratio 
   expect(grain.profit).toBeCloseTo(25 * (0.1 * (0.2 / 0.12) - 0.1), 6);
 });
 
+test("amounts follow the game panel: surplus - hub need, need - distribution import, export and plain import ignored", async () => {
+  // Market 100 grain: surplus 50, export 40, hub need 20 -> sells 30 (not 10). Market 101 needs 100 grain.
+  // Market 101 salt: surplus 20 meets market 100's salt need 30 with plain import 25 (ignored) and
+  // distribution_import 10 -> wants 20.
+  const text = GS.replace(
+    "0=" + bal({ surplus: 50, export: 10, need: 0, import: 0 }),
+    "0=" + bal({ surplus: 50, export: 40, import_only_need: 20, need: 0, import: 0 }),
+  )
+    .replace(
+      "0=" + bal({ surplus: 0, export: 0, need: 25, import: 0 }),
+      "0=" + bal({ surplus: 0, export: 0, need: 100, import: 0 }),
+    )
+    .replace(
+      "1=" + bal({ surplus: 0, export: 0, need: 30, import: 5 }),
+      "1=" + bal({ surplus: 0, export: 0, need: 30, import: 25, distribution_import: 10 }),
+    );
+  const info = (await queryGamestate(Buffer.from(text), (q) =>
+    extractTradeSuggestions(q, new Localizer(null), new GameData(null), GOODS),
+  ))!;
+  const flows = info.suggestions.find((x) => x.other.id === 101)!.flows;
+  expect(flows.find((f) => f.good === "trade_good_grain")).toMatchObject({ amount: 30 });
+  expect(flows.find((f) => f.good === "trade_good_salt")).toMatchObject({ amount: 20 });
+});
+
 test("a good that would sell for no more than it costs adds no flow", async () => {
   const gs = GS.replace(
     "type=sell amount=1 price_per_unit=0.15",

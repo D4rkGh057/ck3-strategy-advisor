@@ -5,7 +5,7 @@ import { extractMarkets } from "../src/extract/markets.js";
 import { line } from "../src/tools/markets.js";
 
 // Player 1 holds county 11 (market 100). Market 101 is crossed by the player's route 0. Market 102 is
-// foreign and unrelated. Goods: 0 grain, 1 salt.
+// foreign and unrelated. Goods: 0 grain, 1 salt, 2 wine.
 const bal = (v: Record<string, number>) =>
   `{ ${Object.entries(v)
     .map(([k, n]) => `${k}=${n}`)
@@ -22,9 +22,9 @@ landed_titles={ landed_titles={
 living={ 1={ first_name="Ruler" landed_data={ domain={ 11 } } } }
 trade_markets={ database={
   100={ location=21 duchy=1 titles={ 11 } trade_routes={ 0 }
-    good_balances={ 0=${bal({ surplus: 50, export: 10, need: 0, import: 0 })} 1=${bal({ surplus: 0, export: 0, need: 30, import: 5 })} } }
+    good_balances={ 0=${bal({ surplus: 50, export: 10, need: 0, import: 0 })} 1=${bal({ surplus: 0, export: 0, need: 30, import: 5, distribution_import: 5 })} } }
   101={ location=22 duchy=2 titles={ 12 } trade_routes={ 0 1 }
-    good_balances={ 0=${bal({ surplus: 0, export: 0, need: 25, import: 0 })} 1=${bal({ surplus: 0.2, export: 0, need: 0, import: 0 })} } }
+    good_balances={ 0=${bal({ surplus: 0, export: 0, need: 25, import: 0 })} 1=${bal({ surplus: 0.2, export: 0, need: 0, import: 0 })} 2=${bal({ surplus: 40, export: 5, import_only_need: 15, need: 0, import: 0 })} } }
   102={ location=23 duchy=3 titles={ 13 } trade_routes={ }
     good_balances={ 0=${bal({ surplus: 99, export: 0, need: 0, import: 0 })} } }
 } }
@@ -33,7 +33,7 @@ trade_routes={ database={
   1={ owner=2 mode=profit trade_markets={ 101 } }
 } }
 `;
-const GOODS = ["trade_good_grain", "trade_good_salt"];
+const GOODS = ["trade_good_grain", "trade_good_salt", "trade_good_wine"];
 const run = async (goods: string[] | null = GOODS) =>
   (await queryGamestate(Buffer.from(GS), (q) => extractMarkets(q, new Localizer(null), goods)))!;
 
@@ -44,11 +44,13 @@ test("lists realm and own-route markets, not foreign ones", async () => {
   expect(info.markets[1]!.links).toEqual(["own route"]);
 });
 
-test("reads surplus as surplus - export and need as need - import, dropping crumbs", async () => {
+test("reads surplus as surplus - hub need and need as need - distribution import, dropping crumbs", async () => {
   const [m100, m101] = (await run()).markets;
-  expect(m100!.surplus).toEqual([{ good: "trade_good_grain", amount: 40 }]);
+  // Export is not subtracted (grain 50 stays 50); plain import is not either, only distribution_import (30 - 5).
+  expect(m100!.surplus).toEqual([{ good: "trade_good_grain", amount: 50 }]);
   expect(m100!.deficit).toEqual([{ good: "trade_good_salt", amount: 25 }]);
-  expect(m101!.surplus).toEqual([]);
+  // Index 2 (a third good): 40 surplus - 15 hub need = 25, with export 5 ignored; 0.2 salt is a crumb.
+  expect(m101!.surplus).toEqual([{ good: "trade_good_wine", amount: 25 }]);
   expect(m101!.deficit).toEqual([{ good: "trade_good_grain", amount: 25 }]);
 });
 
@@ -74,6 +76,6 @@ test("renders one line per market", async () => {
   const [m100] = (await run()).markets;
   const out = line({ loc: { resolve: (k: string) => k } } as any, m100!);
   expect(out).toBe(
-    "- b_a (100) [realm, own route] — 1 route(s) (1 yours); unsold surplus: grain 40; unmet need: salt 25",
+    "- b_a (100) [realm, own route] — 1 route(s) (1 yours); unsold surplus: grain 50; unmet need: salt 25",
   );
 });
