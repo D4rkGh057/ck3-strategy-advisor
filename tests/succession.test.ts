@@ -61,3 +61,60 @@ test("tool says so when the save has no designated heir", async () => {
   expect(text).toContain("- Designated heir: not stored in this save");
   expect(text).not.toContain("<- designated heir");
 });
+
+import { queryGamestate } from "../src/parser.js";
+import { extractSuccession } from "../src/extract/succession.js";
+
+// Houses 100 and 200 are one dynasty (7); house 300 is another (8).
+const dynastyGs = (own: string) => `
+played_character={ character=1 player=1 }
+landed_titles={ landed_titles={ 10={ key="x_c_merchant_a" name="Company" holder=1 } } }
+dynasties={ dynasty_house={ 100={ dynasty=7 } 200={ dynasty=7 } 300={ dynasty=8 } } }
+living={
+1={ first_name="Me" ${own} landed_data={ domain={ 10 } succession={ 2 3 4 } laws={ "company_succession_law" "male_preference_law" } } }
+2={ first_name="Cousin" dynasty_house=200 }
+3={ first_name="Stranger" dynasty_house=300 }
+4={ first_name="Lowborn" }
+}
+`;
+const extract = (gs: string) =>
+  queryGamestate(Buffer.from(gs), (q) => extractSuccession(q, new Localizer(null)));
+
+test("heirs of your dynasty are found through the house, not only the same house", async () => {
+  expect((await extract(dynastyGs("dynasty_house=100"))).dynastyHeirIds).toEqual([2]);
+});
+
+test("a list with nobody of your dynasty gives an empty list; unknown own dynasty gives null", async () => {
+  expect((await extract(dynastyGs("dynasty_house=300"))).dynastyHeirIds).toEqual([3]);
+  const none = dynastyGs("dynasty_house=100").replace("dynasty_house=200", "dynasty_house=300");
+  expect((await extract(none)).dynastyHeirIds).toEqual([]);
+  expect((await extract(dynastyGs(""))).dynastyHeirIds).toBeNull();
+});
+
+const withDynasty = (dynastyHeirIds: number[] | null) => ({
+  ...base,
+  designatedHeir: null,
+  heirs: [
+    { id: 1, name: "Daniel" },
+    { id: 3, name: "Simon" },
+  ],
+  dynastyHeirIds,
+});
+
+test("tool tags heirs of your dynasty", async () => {
+  const text = await renderSuccession(withDynasty([3]));
+  expect(text).toContain("2. Simon (3) (your dynasty)");
+  expect(text).not.toContain("1. Daniel (1) (your dynasty)");
+  expect(text).not.toContain("None of these heirs");
+});
+
+test("tool explains the no-heir alert when nobody is of your dynasty", async () => {
+  expect(await renderSuccession(withDynasty([]))).toContain(
+    "None of these heirs is of your dynasty",
+  );
+});
+
+test("tool says nothing about dynasty when it cannot be read", async () => {
+  const text = await renderSuccession(withDynasty(null));
+  expect(text).not.toContain("your dynasty");
+});

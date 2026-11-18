@@ -16,6 +16,11 @@ export interface SuccessionInfo {
   designatedHeir: HeirRef | null;
   heirs: HeirRef[];
   totalHeirs: number;
+  /**
+   * Ids in the whole succession list that belong to the player's dynasty (the game's "no heir"
+   * alert asks for a title heir of your dynasty). null when the player's dynasty cannot be read.
+   */
+  dynastyHeirIds: number[] | null;
   claimants: HeirRef[];
   totalClaimants: number;
 }
@@ -53,6 +58,17 @@ export function extractSuccession(q: Query, loc: Localizer): SuccessionInfo {
     name: resolveCharName(q, loc, id),
   }));
 
+  // A character's dynasty: house -> /dynasties/dynasty_house/{house}/dynasty (null for lowborn).
+  const dynastyOf = (id: number): number | null => {
+    const house = q.at(`/living/${id}/dynasty_house`);
+    if (typeof house !== "number") return null;
+    const dynasty = q.at(`/dynasties/dynasty_house/${house}/dynasty`);
+    return typeof dynasty === "number" ? dynasty : null;
+  };
+  const ownDynasty = dynastyOf(playerId);
+  const dynastyHeirIds =
+    ownDynasty === null ? null : successionIds.filter((id) => dynastyOf(id) === ownDynasty);
+
   // Designated heir: the character the game shows as heir. Under partition laws
   // the order of landed_data/succession is NOT this.
   const designatedId = q.at(`/living/${playerId}/playable_data/diarchy_successor`) as
@@ -87,6 +103,7 @@ export function extractSuccession(q: Query, loc: Localizer): SuccessionInfo {
     designatedHeir,
     heirs,
     totalHeirs,
+    dynastyHeirIds,
     claimants,
     totalClaimants,
   };
