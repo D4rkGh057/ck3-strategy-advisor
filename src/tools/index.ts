@@ -23,36 +23,38 @@ import { registerRaidsTool } from "./raids.js";
 import { registerTradeTool } from "./trade.js";
 import { registerTradeSuggestionsTool } from "./tradeSuggestions.js";
 
-type ToolResult = { content: { type: string; text?: string }[] };
+type Registered = { content: { type: string; text?: string }[] };
 
 // Tool output is built from the save's raw names; decode the escaped ones ("BeorhtflE_d" ->
-// "Beorhtflæd") in one place instead of in every extractor.
-function withDecodedNames(server: McpServer, cache: SnapshotCache, register: () => void) {
-  const target = server as unknown as { registerTool: (...args: unknown[]) => unknown };
-  const original = target.registerTool;
-  target.registerTool = (name, config, cb) =>
-    original.call(server, name, config, async (...args: unknown[]) => {
-      const result = (await (cb as (...a: unknown[]) => Promise<ToolResult>)(
-        ...args,
-      )) as ToolResult;
-      return {
-        ...result,
-        content: result.content.map((c) =>
-          c.type === "text" && typeof c.text === "string"
-            ? { ...c, text: cache.loc.decodeNames(c.text) }
-            : c,
-        ),
-      };
-    });
-  try {
-    register();
-  } finally {
-    target.registerTool = original;
-  }
+// "Beorhtflæd") in one place instead of in every extractor. The tools get a view of the server
+// whose registerTool decodes every reply; the real server is never modified.
+function decodingServer(server: McpServer, cache: SnapshotCache): McpServer {
+  const registerTool = ((
+    name: string,
+    config: unknown,
+    cb: (...a: unknown[]) => Promise<Registered>,
+  ) =>
+    (server.registerTool as (...a: unknown[]) => unknown).call(
+      server,
+      name,
+      config,
+      async (...args: unknown[]) => {
+        const result = await cb(...args);
+        return {
+          ...result,
+          content: result.content.map((c) =>
+            c.type === "text" && typeof c.text === "string"
+              ? { ...c, text: cache.loc.decodeNames(c.text) }
+              : c,
+          ),
+        };
+      },
+    )) as McpServer["registerTool"];
+  return Object.create(server, { registerTool: { value: registerTool } }) as McpServer;
 }
 
 export function registerAllTools(server: McpServer, cache: SnapshotCache) {
-  withDecodedNames(server, cache, () => registerEach(server, cache));
+  registerEach(decodingServer(server, cache), cache);
 }
 
 function registerEach(server: McpServer, cache: SnapshotCache) {

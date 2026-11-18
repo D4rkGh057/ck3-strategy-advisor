@@ -2,7 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { SnapshotCache } from "../cache.js";
 import type { Query } from "../parser.js";
-import { stamp, truncate } from "../format.js";
+import { truncate } from "../format.js";
 import { extractAlerts } from "../extract/alerts.js";
 import { extractCourt, type CourtMember } from "../extract/court.js";
 import { extractFamily, type ParentIndexStore, type Relative } from "../extract/family.js";
@@ -11,9 +11,7 @@ import { extractIntrigue } from "../extract/intrigue.js";
 import { extractMarriageCandidates, type MarriageCandidate } from "../extract/marriage.js";
 import { SKILL_NAMES } from "../extract/common.js";
 import { SKILL_NOTE, formatEffective } from "../extract/skills.js";
-import { errorResult, loadSnapshot } from "./kit.js";
-
-type ToolResult = { isError?: boolean; content: { type: "text"; text: string }[] };
+import { type ToolResult, errorResult, loadQuery, loadSnapshot, stamped } from "./kit.js";
 
 // Shared plumbing for tools that need a fresh jomini pass beyond the snapshot:
 // fetch the snapshot (for stamping), run the extractor, surface errors as text.
@@ -26,11 +24,9 @@ async function run<T>(
 ): Promise<ToolResult> {
   const snapLoad = await loadSnapshot(cache);
   if (!snapLoad.ok) return errorResult(snapLoad.error);
-  const snap = snapLoad.value;
-  // Wrap so a null/array extractor result can't be confused with cache.query's { error }.
-  const result = await cache.memoQuery(key, (q, shared) => ({ data: extract(q, shared) }));
-  if ("error" in result) return { isError: true, content: [{ type: "text", text: result.error }] };
-  return { content: [{ type: "text", text: stamp(snap, render(result.data)) }] };
+  const result = await loadQuery(cache, key, extract);
+  if (!result.ok) return errorResult(result.error);
+  return stamped(snapLoad.value, render(result.value));
 }
 
 const READ_ONLY = { readOnlyHint: true, openWorldHint: false } as const;

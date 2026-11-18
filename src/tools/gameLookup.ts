@@ -2,15 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { SnapshotCache } from "../cache.js";
 import { CATEGORIES } from "../gameLookup.js";
-
-const READ_ONLY = { readOnlyHint: true, openWorldHint: false } as const;
-
-function text(body: string, isError = false) {
-  return {
-    ...(isError ? { isError: true } : {}),
-    content: [{ type: "text" as const, text: body }],
-  };
-}
+import { READ_ONLY, errorResult, textResult } from "./kit.js";
 
 const NO_GAME =
   "Game files are not available. Set CK3_GAME_DIR to the Crusader Kings III install folder " +
@@ -48,19 +40,19 @@ export function registerGameLookupTools(server: McpServer, cache: SnapshotCache)
       annotations: READ_ONLY,
     },
     async ({ query, category, limit }: { query: string; category?: string; limit?: number }) => {
-      if (!lookup.available) return text(NO_GAME, true);
+      if (!lookup.available) return errorResult(NO_GAME);
       if (category && !CATEGORIES[category])
-        return text(`Unknown category '${category}'. Categories: ${categoryList()}`, true);
+        return errorResult(`Unknown category '${category}'. Categories: ${categoryList()}`);
       const hits = lookup.search(query, category, Math.min(Math.max(limit ?? 15, 1), 50));
       if (hits.length === 0)
-        return text(`No game data matching '${query}'${category ? ` in ${category}` : ""}.`);
+        return textResult(`No game data matching '${query}'${category ? ` in ${category}` : ""}.`);
       const lines = hits.map(({ entry, name }) => {
         const desc = lookup.description(entry);
         const label = name === entry.key ? "" : ` — ${name}`;
         const snippet = desc ? `: ${desc.length > 110 ? desc.slice(0, 110) + "…" : desc}` : "";
         return `- [${entry.category}] \`${entry.key}\`${label}${snippet}`;
       });
-      return text(`# ${hits.length} match(es) for '${query}'\n${lines.join("\n")}`);
+      return textResult(`# ${hits.length} match(es) for '${query}'\n${lines.join("\n")}`);
     },
   );
 
@@ -86,16 +78,15 @@ export function registerGameLookupTools(server: McpServer, cache: SnapshotCache)
       annotations: READ_ONLY,
     },
     async ({ category, key, max_chars }: { category: string; key: string; max_chars?: number }) => {
-      if (!lookup.available) return text(NO_GAME, true);
+      if (!lookup.available) return errorResult(NO_GAME);
       if (!CATEGORIES[category])
-        return text(`Unknown category '${category}'. Categories: ${categoryList()}`, true);
+        return errorResult(`Unknown category '${category}'. Categories: ${categoryList()}`);
       const entry = lookup.get(category, key);
       if (!entry) {
         const near = lookup.suggest(category, key);
-        return text(
+        return errorResult(
           `No ${category} entry '${key}'.` +
             (near.length ? ` Similar keys: ${near.map((k) => `\`${k}\``).join(", ")}.` : ""),
-          true,
         );
       }
       const limit = Math.min(Math.max(max_chars ?? 6000, 500), 40000);
@@ -110,7 +101,7 @@ export function registerGameLookupTools(server: McpServer, cache: SnapshotCache)
         body,
         "```",
       ];
-      return text(lines.filter((l) => l !== "").join("\n"));
+      return textResult(lines.filter((l) => l !== "").join("\n"));
     },
   );
 }

@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   errorResult,
   fail,
+  loadFresh,
   loadQuery,
+  loadRawText,
   loadSnapshot,
   ok,
   stamped,
@@ -34,5 +36,20 @@ describe("tool kit", () => {
   it("loadQuery turns a cache error into a failed outcome", async () => {
     const cache = { memoQuery: async () => ({ error: "boom" }) } as any;
     expect(await loadQuery(cache, "k", () => 1)).toEqual(fail("boom"));
+  });
+
+  it("loadFresh and loadRawText surface cache errors as failed outcomes", async () => {
+    const good = {
+      query: async (fn: any) => fn({}, {}),
+      rawGamestateText: async () => "gs",
+    } as any;
+    const bad = {
+      query: async () => ({ error: "x" }),
+      rawGamestateText: async () => ({ error: "y" }),
+    } as any;
+    expect(await loadFresh(good, () => null)).toEqual(ok(null));
+    expect(await loadFresh(bad, () => 1)).toEqual(fail("x"));
+    expect(await loadRawText(good)).toEqual(ok("gs"));
+    expect(await loadRawText(bad)).toEqual(fail("y"));
   });
 });

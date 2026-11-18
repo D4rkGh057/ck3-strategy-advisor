@@ -46,3 +46,18 @@ export async function loadQuery<T>(
   const res = await cache.memoQuery(key, (q, shared) => ({ data: extract(q, shared) }));
   return "error" in res ? fail(res.error) : ok(res.data);
 }
+
+/** Like `loadQuery` but not kept: for work that depends on per-call data and mutates its own copy. */
+export async function loadFresh<T>(
+  cache: SnapshotCache,
+  extract: (q: Query, shared: ParentIndexStore) => T,
+): Promise<Outcome<T>> {
+  const res = await cache.query((q, shared) => ({ data: extract(q, shared) }));
+  return "error" in res ? fail(res.error) : ok(res.data);
+}
+
+/** The save's gamestate as text, converted once per save by the cache. */
+export async function loadRawText(cache: SnapshotCache): Promise<Outcome<string>> {
+  const text = await cache.rawGamestateText();
+  return typeof text === "string" ? ok(text) : fail(text.error);
+}

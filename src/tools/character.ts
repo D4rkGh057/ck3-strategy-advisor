@@ -5,7 +5,7 @@ import { extractCharacter, findCharacters } from "../extract/characters.js";
 import { resolveTitleName } from "../extract/titleUtils.js";
 import { stamp, truncate } from "../format.js";
 import { SKILL_NOTE, formatEffective } from "../extract/skills.js";
-import { errorResult, loadQuery, loadSnapshot } from "./kit.js";
+import { errorResult, loadFresh, loadQuery, loadRawText, loadSnapshot } from "./kit.js";
 
 export function registerCharacterTools(server: McpServer, cache: SnapshotCache) {
   server.registerTool(
@@ -25,9 +25,9 @@ export function registerCharacterTools(server: McpServer, cache: SnapshotCache) 
       const snap = snapLoad.value;
 
       // FIX D: use pre-converted text (once per save, not per call)
-      const textResult = await cache.rawGamestateText();
-      if (typeof textResult !== "string") return errorResult(textResult.error);
-      const text = textResult;
+      const rawText = await loadRawText(cache);
+      if (!rawText.ok) return errorResult(rawText.error);
+      const text = rawText.value;
 
       const all = findCharacters(text, name, (r) => cache.loc.charName(r));
       if (all.length === 0) {
@@ -40,7 +40,7 @@ export function registerCharacterTools(server: McpServer, cache: SnapshotCache) 
       const { shown, note } = truncate(all, 10);
 
       // FIX I: check enrichment query result
-      const enr = await cache.query((q) => {
+      const enr = await loadFresh(cache, (q) => {
         for (const m of shown) {
           const domain = (q.at(`/living/${m.id}/landed_data/domain`) as number[] | undefined) ?? [];
           const titleId = domain[0];
@@ -50,12 +50,7 @@ export function registerCharacterTools(server: McpServer, cache: SnapshotCache) 
           }
         }
       });
-      if (enr && typeof enr === "object" && "error" in enr) {
-        return {
-          isError: true,
-          content: [{ type: "text", text: (enr as { error: string }).error }],
-        };
-      }
+      if (!enr.ok) return errorResult(enr.error);
 
       const lines = shown
         .map((m) => `- ${m.name} (id ${m.id}) — ${m.primaryTitle ?? "no title"}`)
