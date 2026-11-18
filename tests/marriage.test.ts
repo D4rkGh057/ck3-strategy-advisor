@@ -6,6 +6,7 @@ import { GameLookup } from "../src/gameLookup.js";
 import { Localizer } from "../src/localization.js";
 import { queryGamestate } from "../src/parser.js";
 import { extractMarriageCandidates } from "../src/extract/marriage.js";
+import { registerMarriageCandidatesTool } from "../src/tools/marriageCandidates.js";
 
 // Subject 1 (M, 20) is the son of ruler 10 and heir of the player (10). Rite 1 allows everything
 // except close family; rite 2 (the foreign courtiers) forbids cousins as well.
@@ -273,4 +274,37 @@ test("a ruler in the candidate's close family counts as an alliance, genes and h
   expect(by["Princess"]!.goodGenes).toHaveLength(1);
   expect(by["Courtier"]!.badGenes).toHaveLength(1);
   expect(r!.candidates[0]!.name.startsWith("Princess")).toBe(true);
+});
+
+async function renderTool(args: Record<string, unknown>): Promise<string> {
+  const { loc, lookup } = setup();
+  const cache = {
+    get: async () => ({ date: "1066.9.15", parsedAt: Date.now() }),
+    memoQuery: (_key: string, fn: (q: unknown, shared: object) => unknown) =>
+      queryGamestate(GS, (q) => fn(q, {})),
+    loc,
+    lookup,
+  } as any;
+  let handler: any;
+  const server = {
+    registerTool: (_name: string, _cfg: unknown, h: unknown) => {
+      handler = h;
+    },
+  } as any;
+  registerMarriageCandidatesTool(server, cache);
+  const res = await handler(args);
+  return res.content[0].text as string;
+}
+
+test("the tool renders each candidate with where they are, skills, traits and fertility", async () => {
+  const text = await renderTool({ id: 1, sameLanguage: true });
+  expect(text).toContain("# Marriage candidates for Subject (1, M, age 20, Insular)");
+  expect(text).toContain("3 match(es) out of");
+  expect(text).toContain("showing 3.");
+  expect(text).toMatch(/Courtier \(2, F, age 22\) — at the court of Neighbour \(20/);
+  expect(text).toMatch(/Daughter \(11, F, age 20\) — child of Neighbour \(20/);
+  expect(text).toMatch(/Pool \(5, F, age 22\) — unattached/);
+  expect(text).toContain("brave");
+  expect(text).toContain("fertility 0.50");
+  expect(text).not.toContain("None found");
 });
