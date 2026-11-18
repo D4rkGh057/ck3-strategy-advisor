@@ -47,6 +47,22 @@ export async function loadQuery<T>(
   return "error" in res ? fail(res.error) : ok(res.data);
 }
 
+// Shared plumbing for tools that need a fresh jomini pass beyond the snapshot:
+// fetch the snapshot (for stamping), run the extractor, surface errors as text.
+// `key` names the extractor and every argument it depends on: the result is kept per save.
+export async function run<T>(
+  cache: SnapshotCache,
+  key: string,
+  extract: (q: Query, shared: ParentIndexStore) => T,
+  render: (data: T) => string,
+): Promise<ToolResult> {
+  const snapLoad = await loadSnapshot(cache);
+  if (!snapLoad.ok) return errorResult(snapLoad.error);
+  const result = await loadQuery(cache, key, extract);
+  if (!result.ok) return errorResult(result.error);
+  return stamped(snapLoad.value, render(result.value));
+}
+
 /** Like `loadQuery` but not kept: for work that depends on per-call data and mutates its own copy. */
 export async function loadFresh<T>(
   cache: SnapshotCache,
