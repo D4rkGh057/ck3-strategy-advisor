@@ -38,7 +38,8 @@ function collect(cache: SnapshotCache): Map<string, Handler> {
 }
 
 // The snapshot stamp carries a wall-clock age.
-const normalize = (v: unknown) => JSON.parse(JSON.stringify(v).replace(/read [^)]*\)/g, "read AGE)"));
+const normalize = (v: unknown) =>
+  JSON.parse(JSON.stringify(v).replace(/read [^)]*\)/g, "read AGE)"));
 
 async function runAll(cache: SnapshotCache) {
   const out: Record<string, unknown> = {};
