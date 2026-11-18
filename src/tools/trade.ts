@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { SnapshotCache } from "../cache.js";
-import { stamp, truncate } from "../format.js";
+import { block, stamp, truncate } from "../format.js";
 import { extractTrade, type CategoryExpertise, type TradeRoute } from "../extract/trade.js";
 import { loadTradeCategories, loadXpLevelThreshold } from "../tradeGoods.js";
 import { errorResult, loadQuery, loadSnapshot } from "./kit.js";
@@ -12,8 +12,7 @@ function categoryName(cache: SnapshotCache, key: string): string {
 
 function expertiseLine(cache: SnapshotCache, e: CategoryExpertise): string {
   const decay = e.decaying ? " — no route of yours fulfils it, probably losing XP" : "";
-  return `- ${categoryName(cache, e.category)}: level ${e.level} (${e.xp.toFixed(0)} XP, ${e.toNext.toFixed(0)} to next)${decay}
-`;
+  return `- ${categoryName(cache, e.category)}: level ${e.level} (${e.xp.toFixed(0)} XP, ${e.toNext.toFixed(0)} to next)${decay}`;
 }
 
 function line(r: TradeRoute, showOwner: boolean): string {
@@ -26,7 +25,7 @@ function line(r: TradeRoute, showOwner: boolean): string {
   const owner = showOwner && r.ownerId !== null ? ` — owner ${r.owner} (${r.ownerId})` : "";
   return (
     `- Route ${r.id}: ${r.primaryGood ?? "mixed goods"}, ${r.mode} — ${markets}` +
-    `${gold}${trader}${idle}, ${r.transactions} transactions${owner}\n`
+    `${gold}${trader}${idle}, ${r.transactions} transactions${owner}`
   );
 }
 
@@ -79,21 +78,21 @@ export function registerTradeTool(server: McpServer, cache: SnapshotCache) {
       if (info.own.length === 0) body += "You own no trade routes.\n";
       else {
         const t = truncate(info.own, 25);
-        body += t.shown.map((r) => line(r, false)).join("") + t.note;
+        body += block(t.shown.map((r) => line(r, false))) + t.note;
       }
       body += "\n# Trade expertise by category\n\n";
       if (info.expertise === null)
         body +=
           "Not shown: the game files were not found (set CK3_GAME_DIR), so category names cannot be trusted.\n";
       else if (info.expertise.length === 0) body += "No category has XP yet.\n";
-      else body += info.expertise.map((e) => expertiseLine(cache, e)).join("");
+      else body += block(info.expertise.map((e) => expertiseLine(cache, e)));
       body += `\n# Routes through your realm's markets: ${info.realm.length}\n\n`;
       if (info.landless) body += "You hold no land, so there is no realm to scan.\n";
       else if (info.realm.length === 0)
         body += `No other routes cross your ${info.realmMarkets} realm market(s).\n`;
       else {
         const t = truncate(info.realm, 25);
-        body += t.shown.map((r) => line(r, true)).join("") + t.note;
+        body += block(t.shown.map((r) => line(r, true))) + t.note;
       }
       body += `\n_${info.worldRoutes} trade routes exist in the whole save._\n`;
       return { content: [{ type: "text", text: stamp(snap, body) }] };

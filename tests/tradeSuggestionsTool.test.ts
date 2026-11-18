@@ -23,7 +23,7 @@ describe("trade_suggestions line", () => {
       suggestion([{ good: "trade_good_salt", amount: 20, direction: "in", profit: 1.6 }]),
     );
     expect(out).toBe(
-      "- Anchor (100) ↔ Other (101) — score 1.6: 20 salt (buy Other, sell Anchor, +1.60)\n",
+      "- Anchor (100) ↔ Other (101) — score 1.6: 20 salt (buy Other, sell Anchor, +1.60)",
     );
   });
 

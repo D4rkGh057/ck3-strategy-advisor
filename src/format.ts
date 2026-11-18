@@ -14,3 +14,14 @@ export function truncate<T>(items: T[], n: number): { shown: T[]; note: string }
   if (items.length <= n) return { shown: items, note: "" };
   return { shown: items.slice(0, n), note: `\n\n_Showing ${n} of ${items.length}._` };
 }
+
+/**
+ * Formatting rule: a formatter returns one entry (one or several lines) WITHOUT a trailing newline.
+ * `bullet` prefixes a list entry; `block` stacks entries one per line and closes the last one, so
+ * the caller never has to remember who ends with a newline. An empty list gives "".
+ */
+export const bullet = (text: string): string => `- ${text}`;
+
+export function block(entries: string[]): string {
+  return entries.length ? entries.join("\n") + "\n" : "";
+}

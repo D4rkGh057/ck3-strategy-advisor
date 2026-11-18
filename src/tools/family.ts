@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { SnapshotCache } from "../cache.js";
 import { extractFamily, type Relative } from "../extract/family.js";
+import { block, bullet } from "../format.js";
 import { READ_ONLY, run } from "./kit.js";
 
 function kin(r: Relative): string {
@@ -34,7 +35,7 @@ export function registerFamilyTool(server: McpServer, cache: SnapshotCache) {
             `## ${title} (${list.length})\n` +
             (list.length === 0
               ? "None.\n"
-              : list.map((r) => `- ${kin(r)}${withRel ? ` — ${r.relation}` : ""}\n`).join(""));
+              : block(list.map((r) => bullet(`${kin(r)}${withRel ? ` — ${r.relation}` : ""}`))));
           let body = `# Family of ${f.subject.name} (${f.subject.id}, age ${f.subject.age ?? "?"})\n`;
           body += section("Parents", f.parents);
           body += section("Spouses", f.spouses);

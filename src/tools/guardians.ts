@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { SnapshotCache } from "../cache.js";
-import { stamp, truncate } from "../format.js";
+import { block, bullet, stamp, truncate } from "../format.js";
 import {
   extractGuardians,
   type ChildEntry,
@@ -58,8 +58,11 @@ function childLine(
   ]
     .filter(Boolean)
     .join(", ");
-  let out = `- ${c.name} (${c.id}, ${c.female ? "F" : "M"} ${c.age}, ${c.relation}): ${focus}; ${care}
-`;
+  const rows = [
+    bullet(
+      `${c.name} (${c.id}, ${c.female ? "F" : "M"} ${c.age}, ${c.relation}): ${focus}; ${care}`,
+    ),
+  ];
   const traits = c.childhood.length ? c.childhood.join(", ") : "no childhood trait";
   const fit =
     c.fit === "good"
@@ -70,23 +73,23 @@ function childLine(
           ? "neutral for the focus"
           : "";
   const better = c.affinity.filter((f) => f !== c.focus);
-  out +=
+  rows.push(
     `  ${traits}${fit ? ` — ${fit}` : ""}` +
-    (c.fit === "bad" && better.length ? `; better fit: ${better.join(", ")}` : "") +
-    (c.fit === "neutral" && better.length ? `; would match: ${better.join(", ")}` : "") +
-    (c.intelligence ? `; intelligence +${c.intelligence}` : "") +
-    "\n";
+      (c.fit === "bad" && better.length ? `; better fit: ${better.join(", ")}` : "") +
+      (c.fit === "neutral" && better.length ? `; would match: ${better.join(", ")}` : "") +
+      (c.intelligence ? `; intelligence +${c.intelligence}` : ""),
+  );
   if (c.picks.length && c.focus)
-    out +=
+    rows.push(
       `  best ${c.focus} educators: ` +
-      c.picks
-        .map(
-          (p) =>
-            `${p.person.name} ${p.value.toFixed(1)} (${c.focus} ${p.skill}, ${p.person.wards} wards)`,
-        )
-        .join(", ") +
-      "\n";
-  return out;
+        c.picks
+          .map(
+            (p) =>
+              `${p.person.name} ${p.value.toFixed(1)} (${c.focus} ${p.skill}, ${p.person.wards} wards)`,
+          )
+          .join(", "),
+    );
+  return rows.join("\n");
 }
 
 export function registerGuardiansTool(server: McpServer, cache: SnapshotCache) {
@@ -130,7 +133,7 @@ export function registerGuardiansTool(server: McpServer, cache: SnapshotCache) {
       body += info.children.length
         ? (() => {
             const t = truncate(info.children, 30);
-            return t.shown.map(childLine).join("") + t.note;
+            return block(t.shown.map(childLine)) + t.note;
           })()
         : "No children at your court.\n";
       for (const r of info.roles) body += roleSection(r, top ?? 5);

@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { SnapshotCache } from "../cache.js";
 import { extractMarriageCandidates, type MarriageCandidate } from "../extract/marriage.js";
 import { SKILL_NOTE, formatEffective } from "../extract/skills.js";
+import { block } from "../format.js";
 import { READ_ONLY, run } from "./kit.js";
 
 function candidateLine(c: MarriageCandidate, n: number): string {
@@ -33,7 +34,7 @@ function candidateLine(c: MarriageCandidate, n: number): string {
   if (c.claims.length) extra.push(`claims: ${c.claims.join(", ")}`);
   if (extra.length) lines.push(`   ${extra.join(" | ")}`);
   if (c.notes.length) lines.push(`   ${c.notes.join("; ")}`);
-  return lines.join("\n") + "\n";
+  return lines.join("\n");
 }
 
 export function registerMarriageCandidatesTool(server: McpServer, cache: SnapshotCache) {
@@ -107,7 +108,7 @@ export function registerMarriageCandidatesTool(server: McpServer, cache: Snapsho
             .join(", ");
           if (ex) body += `Filtered out: ${ex}.\n`;
           body += "\n";
-          m.candidates.forEach((c, i) => (body += candidateLine(c, i + 1)));
+          body += block(m.candidates.map((c, i) => candidateLine(c, i + 1)));
           if (m.candidates.length === 0)
             body += "None found. Try a larger maxDistance or a wider age range.\n";
           return body;

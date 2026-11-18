@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { SnapshotCache } from "../cache.js";
-import { stamp, truncate } from "../format.js";
+import { block, stamp, truncate } from "../format.js";
 import { extractPrisoners, type Prisoner } from "../extract/prisoners.js";
 import { SKILL_NOTE, formatEffective } from "../extract/skills.js";
 import { errorResult, loadQuery, loadSnapshot } from "./kit.js";
@@ -12,15 +12,15 @@ function prisonerBlock(p: Prisoner): string {
   const head =
     `- ${p.name} (${p.id}, ${p.female ? "F" : "M"}${p.age !== null ? `, age ${p.age}` : ""}` +
     `${p.kinship ? `, your ${p.kinship}` : ""}) — ${where}, held ${held}` +
-    `${p.isHeir ? " — ★ in your line of succession" : ""}\n`;
+    `${p.isHeir ? " — ★ in your line of succession" : ""}`;
   const lines = [head];
   lines.push(
     `  ${formatEffective(p.skills)}${p.traits.length ? ` — ${p.traits.join(", ")}` : ""}` +
-      `${p.health !== null ? ` — health ${p.health.toFixed(1)}` : ""}\n`,
+      `${p.health !== null ? ` — health ${p.health.toFixed(1)}` : ""}`,
   );
-  if (p.court) lines.push(`  Court: ${p.court.name} (${p.court.id})\n`);
-  for (const l of p.leads) lines.push(`  → ${l}\n`);
-  return lines.join("");
+  if (p.court) lines.push(`  Court: ${p.court.name} (${p.court.id})`);
+  for (const l of p.leads) lines.push(`  → ${l}`);
+  return lines.join("\n");
 }
 
 export function registerPrisonersTool(server: McpServer, cache: SnapshotCache) {
@@ -59,12 +59,12 @@ export function registerPrisonersTool(server: McpServer, cache: SnapshotCache) {
       if (info.held.length === 0) body += "You hold no prisoners.\n";
       else {
         const t = truncate(info.held, 25);
-        body += t.shown.map(prisonerBlock).join("") + t.note;
+        body += block(t.shown.map(prisonerBlock)) + t.note;
       }
       if (info.kinHeldByOthers.length > 0) {
         body += `\n# Your close kin held by others: ${info.kinHeldByOthers.length}\n\n`;
         const t = truncate(info.kinHeldByOthers, 15);
-        body += t.shown.map(prisonerBlock).join("") + t.note;
+        body += block(t.shown.map(prisonerBlock)) + t.note;
       }
       body += `\n_${info.worldTotal} characters are imprisoned in the whole save._\n`;
       return { content: [{ type: "text", text: stamp(snap, body) }] };

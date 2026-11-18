@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { SnapshotCache } from "../cache.js";
-import { stamp, truncate } from "../format.js";
+import { block, stamp, truncate } from "../format.js";
 import { extractRaids, type RaidArmy } from "../extract/raids.js";
 import { errorResult, loadQuery, loadSnapshot } from "./kit.js";
 
@@ -18,12 +18,12 @@ function army(a: RaidArmy, withOwner: boolean): string {
     ? `RAIDING, ${intentLabel(a.intent)}, progress ${a.progress ?? "?"}, loot ${a.loot ?? 0} gold`
     : "raid-capable, not raiding";
   const lines = [
-    `- Army ${a.armyId}${withOwner ? ` — ${a.ownerName} (${a.ownerId})` : ""} — ${state}\n`,
+    `- Army ${a.armyId}${withOwner ? ` — ${a.ownerName} (${a.ownerId})` : ""} — ${state}`,
     `  ${men}, supply ${a.supply ?? "?"}, province ${a.province ?? "?"}` +
       `${a.commanderName ? `, commander ${a.commanderName}` : ""}` +
-      `${a.raised ? `, raised ${a.raised}` : ""}\n`,
+      `${a.raised ? `, raised ${a.raised}` : ""}`,
   ];
-  return lines.join("");
+  return lines.join("\n");
 }
 
 export function registerRaidsTool(server: McpServer, cache: SnapshotCache) {
@@ -51,13 +51,13 @@ export function registerRaidsTool(server: McpServer, cache: SnapshotCache) {
       const raiding = res.value.mine.filter((a) => a.active).length;
       let body = `# Your raid armies: ${res.value.mine.length} (${raiding} raiding)\n\n`;
       if (res.value.mine.length === 0) body += "You own no raid-capable army.\n";
-      else body += res.value.mine.map((a) => army(a, false)).join("");
+      else body += block(res.value.mine.map((a) => army(a, false)));
 
       body += `\n# Other rulers' active raids: ${res.value.others.length}\n\n`;
       if (res.value.others.length === 0) body += "None running.\n";
       else {
         const t = truncate(res.value.others, 15);
-        body += t.shown.map((a) => army(a, true)).join("") + t.note;
+        body += block(t.shown.map((a) => army(a, true))) + t.note;
       }
       body += `\n_${res.value.worldActive} raids are active in the whole save._\n`;
       return { content: [{ type: "text", text: stamp(snap, body) }] };

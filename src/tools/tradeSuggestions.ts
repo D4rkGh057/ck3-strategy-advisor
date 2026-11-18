@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { SnapshotCache } from "../cache.js";
-import { stamp } from "../format.js";
+import { block, stamp } from "../format.js";
 import { loadCategoryModel, loadTradeGoods, loadXpLevelThreshold } from "../tradeGoods.js";
 import { extractTradeSuggestions, type Suggestion } from "../extract/tradeSuggestions.js";
 import { errorResult, loadQuery, loadSnapshot } from "./kit.js";
@@ -39,7 +39,7 @@ export function line(cache: SnapshotCache, s: Suggestion): string | null {
         .join(", ")}`
     : "";
   const shared = s.existingRoutes > 0 ? `, ${s.existingRoutes} route(s) already cross both` : "";
-  return `- ${s.anchor.place} (${s.anchor.id}) ↔ ${s.other.place} (${s.other.id}) — score ${s.score.toFixed(1)}: ${flows}${dist}${shared}${xp}\n`;
+  return `- ${s.anchor.place} (${s.anchor.id}) ↔ ${s.other.place} (${s.other.id}) — score ${s.score.toFixed(1)}: ${flows}${dist}${shared}${xp}`;
 }
 
 export function registerTradeSuggestionsTool(server: McpServer, cache: SnapshotCache) {
@@ -115,7 +115,7 @@ export function registerTradeSuggestionsTool(server: McpServer, cache: SnapshotC
           ? `Route length: ${len.maxHops} province hops (${lenWhy}). Candidates limited to distance ≤ ${Math.round(info.reach)} (estimated from ${len.hopsPerDistance!.toFixed(3)} hops per distance unit in existing routes).\n\n`
           : `Route length: ${len.maxHops} province hops (${lenWhy}). No distance data: candidates are not limited, so far pairs may exceed it.\n\n`;
       if (lines.length === 0) body += "No pair with unsold surplus meeting unmet need.\n";
-      else body += lines.join("");
+      else body += block(lines);
       body +=
         "\n_Scores estimate a route's gold balance (sell - buy). Connectability, impassable terrain and route limits are not in the save._\n";
       return say(body);
