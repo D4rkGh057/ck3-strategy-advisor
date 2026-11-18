@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { SnapshotCache } from "../cache.js";
 import { stamp, truncate } from "../format.js";
+import { errorResult, loadSnapshot } from "./kit.js";
 
 export function registerFactionsTool(server: McpServer, cache: SnapshotCache) {
   server.registerTool(
@@ -13,8 +14,9 @@ export function registerFactionsTool(server: McpServer, cache: SnapshotCache) {
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async () => {
-      const snap = await cache.get();
-      if ("error" in snap) return { isError: true, content: [{ type: "text", text: snap.error }] };
+      const snapLoad = await loadSnapshot(cache);
+      if (!snapLoad.ok) return errorResult(snapLoad.error);
+      const snap = snapLoad.value;
 
       const { factions } = snap;
       let body: string;

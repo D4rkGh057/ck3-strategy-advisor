@@ -3,6 +3,7 @@ import type { SnapshotCache } from "../cache.js";
 import { stamp } from "../format.js";
 import { loadCategoryModel, loadTradeGoods, loadXpLevelThreshold } from "../tradeGoods.js";
 import { extractTradeSuggestions, type Suggestion } from "../extract/tradeSuggestions.js";
+import { errorResult, loadSnapshot } from "./kit.js";
 
 function goodName(cache: SnapshotCache, key: string): string {
   const v = cache.loc.resolve(key);
@@ -82,8 +83,9 @@ export function registerTradeSuggestionsTool(server: McpServer, cache: SnapshotC
         ),
       }));
       if ("error" in res) return { isError: true, content: [{ type: "text", text: res.error }] };
-      const snap = await cache.get();
-      if ("error" in snap) return { isError: true, content: [{ type: "text", text: snap.error }] };
+      const snapLoad = await loadSnapshot(cache);
+      if (!snapLoad.ok) return errorResult(snapLoad.error);
+      const snap = snapLoad.value;
       const { info } = res;
       const say = (t: string) => ({ content: [{ type: "text" as const, text: stamp(snap, t) }] });
       if (!info) return say("This save has no trade data (pre-Silk and Silver or the DLC is off).");

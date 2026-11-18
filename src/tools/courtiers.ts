@@ -5,6 +5,7 @@ import { ROLE_SKILL, extractCouncil, type CouncilRole } from "../extract/council
 import { extractFactions } from "../extract/vassals.js";
 import { z } from "zod";
 import { extractPool, type PoolCharacter, type PoolScope } from "../extract/courtiers.js";
+import { errorResult, loadSnapshot } from "./kit.js";
 
 const UPGRADE_MARGIN = 3;
 
@@ -35,8 +36,9 @@ export function registerCourtiersTool(server: McpServer, cache: SnapshotCache) {
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async ({ scope }: { scope?: PoolScope }) => {
-      const snap = await cache.get();
-      if ("error" in snap) return { isError: true, content: [{ type: "text", text: snap.error }] };
+      const snapLoad = await loadSnapshot(cache);
+      if (!snapLoad.ok) return errorResult(snapLoad.error);
+      const snap = snapLoad.value;
       const year = Number.parseInt(snap.date, 10);
       // Same key and shape as the `council` tool, so the two share one extraction per save.
       const councilRes = await cache.memoQuery("council", (q) => ({

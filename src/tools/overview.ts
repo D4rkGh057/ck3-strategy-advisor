@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { SnapshotCache } from "../cache.js";
 import { stamp } from "../format.js";
+import { errorResult, loadSnapshot } from "./kit.js";
 
 function fmt(v: number | null, digits = 0): string {
   return v === null ? "?" : v.toFixed(digits);
@@ -20,8 +21,9 @@ export function registerOverview(server: McpServer, cache: SnapshotCache) {
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async () => {
-      const snap = await cache.get();
-      if ("error" in snap) return { isError: true, content: [{ type: "text", text: snap.error }] };
+      const snapLoad = await loadSnapshot(cache);
+      if (!snapLoad.ok) return errorResult(snapLoad.error);
+      const snap = snapLoad.value;
       const o = snap.overview;
       const lines = [
         `# ${o.rulerName} — ${o.primaryTitle} (tier ${o.tier})`,

@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { SnapshotCache } from "../cache.js";
 import { stamp, truncate } from "../format.js";
 import { extractRaids, type RaidArmy } from "../extract/raids.js";
+import { errorResult, loadSnapshot } from "./kit.js";
 
 // "pillage_intent_tribal" -> "pillage (tribal)"; "destruction_intent" -> "destruction".
 function intentLabel(raw: string | null): string {
@@ -43,8 +44,9 @@ export function registerRaidsTool(server: McpServer, cache: SnapshotCache) {
     async () => {
       const res = await cache.memoQuery("raids", (q) => extractRaids(q));
       if ("error" in res) return { isError: true, content: [{ type: "text", text: res.error }] };
-      const snap = await cache.get();
-      if ("error" in snap) return { isError: true, content: [{ type: "text", text: snap.error }] };
+      const snapLoad = await loadSnapshot(cache);
+      if (!snapLoad.ok) return errorResult(snapLoad.error);
+      const snap = snapLoad.value;
 
       const raiding = res.mine.filter((a) => a.active).length;
       let body = `# Your raid armies: ${res.mine.length} (${raiding} raiding)\n\n`;

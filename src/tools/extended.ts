@@ -11,6 +11,7 @@ import { extractIntrigue } from "../extract/intrigue.js";
 import { extractMarriageCandidates, type MarriageCandidate } from "../extract/marriage.js";
 import { SKILL_NAMES } from "../extract/common.js";
 import { SKILL_NOTE, formatEffective } from "../extract/skills.js";
+import { errorResult, loadSnapshot } from "./kit.js";
 
 type ToolResult = { isError?: boolean; content: { type: "text"; text: string }[] };
 
@@ -23,8 +24,9 @@ async function run<T>(
   extract: (q: Query, shared: ParentIndexStore) => T,
   render: (data: T) => string,
 ): Promise<ToolResult> {
-  const snap = await cache.get();
-  if ("error" in snap) return { isError: true, content: [{ type: "text", text: snap.error }] };
+  const snapLoad = await loadSnapshot(cache);
+  if (!snapLoad.ok) return errorResult(snapLoad.error);
+  const snap = snapLoad.value;
   // Wrap so a null/array extractor result can't be confused with cache.query's { error }.
   const result = await cache.memoQuery(key, (q, shared) => ({ data: extract(q, shared) }));
   if ("error" in result) return { isError: true, content: [{ type: "text", text: result.error }] };

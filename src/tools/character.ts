@@ -5,6 +5,7 @@ import { extractCharacter, findCharacters } from "../extract/characters.js";
 import { resolveTitleName } from "../extract/titleUtils.js";
 import { stamp, truncate } from "../format.js";
 import { SKILL_NOTE, formatEffective } from "../extract/skills.js";
+import { errorResult, loadSnapshot } from "./kit.js";
 
 export function registerCharacterTools(server: McpServer, cache: SnapshotCache) {
   server.registerTool(
@@ -19,8 +20,9 @@ export function registerCharacterTools(server: McpServer, cache: SnapshotCache) 
     },
     async ({ name }: { name: string }) => {
       // FIX B: fetch snap before zero-match check so we can stamp it
-      const snap = await cache.get();
-      if ("error" in snap) return { isError: true, content: [{ type: "text", text: snap.error }] };
+      const snapLoad = await loadSnapshot(cache);
+      if (!snapLoad.ok) return errorResult(snapLoad.error);
+      const snap = snapLoad.value;
 
       // FIX D: use pre-converted text (once per save, not per call)
       const textResult = await cache.rawGamestateText();
@@ -77,8 +79,9 @@ export function registerCharacterTools(server: McpServer, cache: SnapshotCache) 
     },
     async ({ id }: { id: number }) => {
       // Get snapshot for stamping
-      const snap = await cache.get();
-      if ("error" in snap) return { isError: true, content: [{ type: "text", text: snap.error }] };
+      const snapLoad = await loadSnapshot(cache);
+      if (!snapLoad.ok) return errorResult(snapLoad.error);
+      const snap = snapLoad.value;
 
       const result = await cache.memoQuery(`character:${id}`, (q) =>
         extractCharacter(q, cache.loc, id, cache.lookup),

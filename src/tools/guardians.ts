@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { SnapshotCache } from "../cache.js";
 import { stamp, truncate } from "../format.js";
+import { errorResult, loadSnapshot } from "./kit.js";
 import {
   extractGuardians,
   type ChildEntry,
@@ -119,8 +120,9 @@ export function registerGuardiansTool(server: McpServer, cache: SnapshotCache) {
         info: extractGuardians(q, cache.loc, cache.lookup, perChild, shared),
       }));
       if ("error" in res) return { isError: true, content: [{ type: "text", text: res.error }] };
-      const snap = await cache.get();
-      if ("error" in snap) return { isError: true, content: [{ type: "text", text: snap.error }] };
+      const snapLoad = await loadSnapshot(cache);
+      if (!snapLoad.ok) return errorResult(snapLoad.error);
+      const snap = snapLoad.value;
       const { info } = res;
       if (!info) return { content: [{ type: "text", text: stamp(snap, "Player not found.") }] };
 

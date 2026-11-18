@@ -3,6 +3,7 @@ import type { SnapshotCache } from "../cache.js";
 import { stamp, truncate } from "../format.js";
 import { extractTrade, type CategoryExpertise, type TradeRoute } from "../extract/trade.js";
 import { loadTradeCategories, loadXpLevelThreshold } from "../tradeGoods.js";
+import { errorResult, loadSnapshot } from "./kit.js";
 
 function categoryName(cache: SnapshotCache, key: string): string {
   const v = cache.loc.resolve(key);
@@ -55,8 +56,9 @@ export function registerTradeTool(server: McpServer, cache: SnapshotCache) {
         ),
       }));
       if ("error" in res) return { isError: true, content: [{ type: "text", text: res.error }] };
-      const snap = await cache.get();
-      if ("error" in snap) return { isError: true, content: [{ type: "text", text: snap.error }] };
+      const snapLoad = await loadSnapshot(cache);
+      if (!snapLoad.ok) return errorResult(snapLoad.error);
+      const snap = snapLoad.value;
       const { info } = res;
       if (!info)
         return {

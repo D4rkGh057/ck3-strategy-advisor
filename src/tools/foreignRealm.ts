@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { SnapshotCache } from "../cache.js";
 import { extractForeignRealm, type ForeignRealmInfo } from "../extract/foreignRealm.js";
 import { stamp } from "../format.js";
+import { errorResult, loadSnapshot } from "./kit.js";
 
 const TIER_LABEL: Record<string, string> = {
   empire: "Empire",
@@ -62,8 +63,9 @@ export function registerForeignRealmTool(server: McpServer, cache: SnapshotCache
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async ({ name }: { name: string }) => {
-      const snap = await cache.get();
-      if ("error" in snap) return { isError: true, content: [{ type: "text", text: snap.error }] };
+      const snapLoad = await loadSnapshot(cache);
+      if (!snapLoad.ok) return errorResult(snapLoad.error);
+      const snap = snapLoad.value;
 
       const result = await cache.memoQuery(`foreign_realm:${name}`, (q) =>
         extractForeignRealm(q, cache.loc, name),

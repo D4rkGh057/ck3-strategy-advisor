@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { SnapshotCache } from "../cache.js";
 import { stamp } from "../format.js";
 import { extractFactions } from "../extract/vassals.js";
+import { errorResult, loadSnapshot } from "./kit.js";
 import {
   ROLE_SKILL,
   riskNotes,
@@ -54,8 +55,9 @@ export function registerCouncilTool(server: McpServer, cache: SnapshotCache) {
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async () => {
-      const snap = await cache.get();
-      if ("error" in snap) return { isError: true, content: [{ type: "text", text: snap.error }] };
+      const snapLoad = await loadSnapshot(cache);
+      if (!snapLoad.ok) return errorResult(snapLoad.error);
+      const snap = snapLoad.value;
       const year = Number.parseInt(snap.date, 10);
       // Same key and shape as `court_candidates`, so the two share one extraction per save.
       const result = await cache.memoQuery("council", (q) => ({

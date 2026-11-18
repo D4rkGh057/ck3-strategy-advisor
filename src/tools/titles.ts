@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { SnapshotCache } from "../cache.js";
 import type { HeldTitle } from "../extract/titles.js";
 import { stamp, truncate } from "../format.js";
+import { errorResult, loadSnapshot } from "./kit.js";
 
 function plural(n: number, singular: string, pluralForm = `${singular}s`): string {
   return `${n} ${n === 1 ? singular : pluralForm}`;
@@ -30,8 +31,9 @@ export function registerTitlesTool(server: McpServer, cache: SnapshotCache) {
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async () => {
-      const snap = await cache.get();
-      if ("error" in snap) return { isError: true, content: [{ type: "text", text: snap.error }] };
+      const snapLoad = await loadSnapshot(cache);
+      if (!snapLoad.ok) return errorResult(snapLoad.error);
+      const snap = snapLoad.value;
 
       const t = snap.titles;
       const counts = [
