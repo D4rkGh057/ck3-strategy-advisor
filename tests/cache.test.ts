@@ -31,6 +31,18 @@ test("cache reports an error when no save exists", async () => {
   expect("error" in (await cache.get())).toBe(true);
 });
 
+test("cache.get() returns { error } instead of throwing when source.latest() throws", async () => {
+  const source = {
+    latest: async () => {
+      throw new Error("EACCES: boom");
+    },
+    read: async () => Buffer.alloc(0),
+  };
+  const cache = new SnapshotCache(source, new Localizer(null));
+  const r = await cache.get();
+  expect("error" in r && r.error).toContain("EACCES: boom");
+});
+
 test("concurrent cold-cache gets coalesce into a single build (same object reference)", async () => {
   const dir = mkdtempSync(join(tmpdir(), "ck3-"));
   const file = join(dir, "game.ck3");

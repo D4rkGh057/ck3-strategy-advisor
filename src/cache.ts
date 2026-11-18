@@ -38,7 +38,12 @@ export class SnapshotCache {
   }
 
   async get(): Promise<Snapshot | { error: string }> {
-    const ref = await this.source.latest();
+    let ref: SaveRef | null;
+    try {
+      ref = await this.source.latest();
+    } catch (e) {
+      return { error: `Could not locate save: ${(e as Error).message}` };
+    }
     if (!ref)
       return this.current ?? { error: "No CK3 save found. Save your game, then ask again." };
     const k = `${ref.path}:${ref.mtimeMs}`;
