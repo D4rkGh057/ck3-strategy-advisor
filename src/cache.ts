@@ -8,6 +8,13 @@ import { GameLookup } from "./gameLookup.js";
 import type { HistoryStore } from "./history.js";
 import type { ParentIndexStore } from "./extract/family.js";
 
+export interface CacheOptions {
+  /** Clock for the failure backoff; injectable so tests need no real waiting. */
+  now?: () => number;
+  /** How long a save that failed to build is left alone while it is still the newest. */
+  failureBackoffMs?: number;
+}
+
 export class SnapshotCache {
   private current: Snapshot | null = null;
   private key = "";
@@ -15,6 +22,10 @@ export class SnapshotCache {
   private gamestateText: string | null = null;
   private inFlight: Promise<Snapshot | { error: string }> | null = null;
   private inFlightKey = "";
+  /** The newest save that failed to build, so it is not re-read on every call. */
+  private failed: { key: string; at: number; result: Snapshot | { error: string } } | null = null;
+  private readonly now: () => number;
+  private readonly failureBackoffMs: number;
   private memos = new Map<string, Promise<unknown>>();
   /** Derived data shared between tools for the current save; replaced whenever a new save is built. */
   private shared: ParentIndexStore = {};
@@ -27,7 +38,10 @@ export class SnapshotCache {
     readonly game: GameData = new GameData(null),
     /** Optional timeline store; every successfully built save is recorded (best effort). */
     readonly history: HistoryStore | null = null,
+    opts: CacheOptions = {},
   ) {
+    this.now = opts.now ?? Date.now;
+    this.failureBackoffMs = opts.failureBackoffMs ?? 5000;
     this.lookup = new GameLookup(game.root, loc);
   }
 
@@ -48,6 +62,8 @@ export class SnapshotCache {
       return this.current ?? { error: "No CK3 save found. Save your game, then ask again." };
     const k = `${ref.path}:${ref.mtimeMs}`;
     if (k === this.key && this.current) return this.current;
+    if (this.failed && this.failed.key === k && this.now() - this.failed.at < this.failureBackoffMs)
+      return this.failed.result;
     // Coalesce concurrent builds for the same save into one parse.
     if (this.inFlight && this.inFlightKey === k) return this.inFlight;
     this.inFlightKey = k;
@@ -70,13 +86,18 @@ export class SnapshotCache {
       this.memos = new Map();
       this.shared = {};
       this.key = k;
+      this.failed = null;
       // A failed write must never fail the tool call that triggered the build.
       void this.history?.record(snap).catch(() => {});
       return snap;
     } catch (e) {
       if (e instanceof IronmanError) return { error: e.message };
-      if (this.current) return this.current; // serve last good on transient/mid-write failure
-      return { error: `Could not read save: ${(e as Error).message}` };
+      // Serve last good on transient/mid-write failure, flagged so the stamp can say so.
+      const result = this.current
+        ? { ...this.current, newerSaveUnreadable: true }
+        : { error: `Could not read save: ${(e as Error).message}` };
+      this.failed = { key: k, at: this.now(), result };
+      return result;
     }
   }
 

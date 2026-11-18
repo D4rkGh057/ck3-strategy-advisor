@@ -46,6 +46,8 @@ export interface RealmOverview {
 export interface Snapshot {
   date: string;
   parsedAt: number;
+  /** Set by the cache when this is an older save served because the newest one failed to read. */
+  newerSaveUnreadable?: boolean;
   overview: RealmOverview;
   military: MilitaryInfo;
   succession: SuccessionInfo;

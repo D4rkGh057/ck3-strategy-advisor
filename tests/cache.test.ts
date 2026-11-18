@@ -144,3 +144,92 @@ test("a failing history store never breaks the cache", async () => {
   );
   expect("error" in (await cache.get())).toBe(false);
 });
+
+// A fake source whose newest save can be flipped between readable and broken.
+function flakySource() {
+  const state = { ref: { path: "game.ck3", mtimeMs: 1000 }, broken: false, reads: 0 };
+  const source = {
+    latest: async () => state.ref,
+    read: async () => {
+      state.reads++;
+      if (state.broken) throw new Error("partial write");
+      return makeTextEnvelope(GS);
+    },
+  };
+  return { state, source };
+}
+
+test("a failed newest save is not rebuilt within the backoff, then is retried after it", async () => {
+  const { state, source } = flakySource();
+  let now = 0;
+  const cache = new SnapshotCache(source, new Localizer(null), undefined, null, {
+    now: () => now,
+    failureBackoffMs: 5000,
+  });
+  const good = await cache.get();
+  expect("error" in good).toBe(false);
+  state.ref = { path: "game.ck3", mtimeMs: 2000 };
+  state.broken = true;
+  const before = state.reads;
+  await cache.get();
+  expect(state.reads).toBe(before + 1);
+  now = 4999;
+  await cache.get();
+  expect(state.reads).toBe(before + 1); // still inside the backoff
+  now = 5000;
+  await cache.get();
+  expect(state.reads).toBe(before + 2); // backoff elapsed
+});
+
+test("a different key is attempted immediately even inside the backoff", async () => {
+  const { state, source } = flakySource();
+  const cache = new SnapshotCache(source, new Localizer(null), undefined, null, {
+    now: () => 0,
+    failureBackoffMs: 5000,
+  });
+  await cache.get();
+  state.ref = { path: "game.ck3", mtimeMs: 2000 };
+  state.broken = true;
+  await cache.get();
+  const before = state.reads;
+  state.ref = { path: "game.ck3", mtimeMs: 3000 };
+  state.broken = false;
+  const fresh = await cache.get();
+  expect(state.reads).toBe(before + 1);
+  expect("error" in fresh).toBe(false);
+  expect("newerSaveUnreadable" in fresh && fresh.newerSaveUnreadable).toBeFalsy();
+});
+
+test("serving an older snapshot after a failure flags it, and the good one stays unflagged", async () => {
+  const { state, source } = flakySource();
+  const cache = new SnapshotCache(source, new Localizer(null), undefined, null, {
+    now: () => 0,
+    failureBackoffMs: 5000,
+  });
+  const good = await cache.get();
+  expect("error" in good).toBe(false);
+  state.ref = { path: "game.ck3", mtimeMs: 2000 };
+  state.broken = true;
+  const stale = await cache.get();
+  const again = await cache.get(); // served from the backoff path
+  for (const s of [stale, again]) {
+    expect("error" in s).toBe(false);
+    expect((s as { newerSaveUnreadable?: boolean }).newerSaveUnreadable).toBe(true);
+    expect((s as { overview: unknown }).overview).toBe((good as { overview: unknown }).overview);
+  }
+  expect((good as { newerSaveUnreadable?: boolean }).newerSaveUnreadable).toBeUndefined();
+});
+
+test("with no last good snapshot a failing save still returns the error, also within the backoff", async () => {
+  const { state, source } = flakySource();
+  state.broken = true;
+  const cache = new SnapshotCache(source, new Localizer(null), undefined, null, {
+    now: () => 0,
+    failureBackoffMs: 5000,
+  });
+  const a = await cache.get();
+  const b = await cache.get();
+  expect("error" in a && a.error).toBe("Could not read save: partial write");
+  expect("error" in b && b.error).toBe("Could not read save: partial write");
+  expect(state.reads).toBe(1);
+});
