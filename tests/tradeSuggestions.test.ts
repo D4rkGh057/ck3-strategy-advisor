@@ -36,6 +36,8 @@ trade_markets={ database={
 trade_routes={ database={
   0={ owner=1 mode=profit trade_markets={ 100 102 } path={ 1 5 3 }
       transactions={ trade_market=100 trade_good=trade_good_grain type=buy amount=1 price_per_unit=0.1 }
+      transactions={ trade_market=100 trade_good=trade_good_grain type=sell amount=1 price_per_unit=0.15 }
+      transactions={ trade_market=100 trade_good=trade_good_salt type=buy amount=1 price_per_unit=0.12 }
       transactions={ trade_market=100 trade_good=trade_good_salt type=sell amount=1 price_per_unit=0.2 } }
 } }
 `;
@@ -46,15 +48,43 @@ const run = async (
   loc = new Localizer(null),
 ) => (await queryGamestate(Buffer.from(GS), (q) => extractTradeSuggestions(q, loc, game, goods)))!;
 
-test("pairs unsold surplus with unmet need, valued at the average transaction price", async () => {
+test("pairs unsold surplus with unmet need, valued at sell price minus buy price", async () => {
   const info = await run();
   const s = info.suggestions.find((x) => x.other.id === 101)!;
-  // out: min(50-10 grain, need 25) = 25 at 0.1; in: min(sell 20 salt, need 30-5=25) = 20 at 0.2.
-  expect(s.flows).toEqual([
-    { good: "trade_good_salt", amount: 20, direction: "in" },
-    { good: "trade_good_grain", amount: 25, direction: "out" },
-  ]);
-  expect(s.score).toBeCloseTo(20 * 0.2 + 25 * 0.1, 6);
+  // out: min(50-10 grain, need 25) = 25 at 0.15 - 0.1; in: min(sell 20 salt, need 30-5=25) = 20 at 0.2 - 0.12.
+  expect(s.flows).toHaveLength(2);
+  expect(s.flows[0]).toMatchObject({ good: "trade_good_salt", amount: 20, direction: "in" });
+  expect(s.flows[0]!.profit).toBeCloseTo(20 * 0.08, 6);
+  expect(s.flows[1]).toMatchObject({ good: "trade_good_grain", amount: 25, direction: "out" });
+  expect(s.flows[1]!.profit).toBeCloseTo(25 * 0.05, 6);
+  expect(s.score).toBeCloseTo(20 * 0.08 + 25 * 0.05, 6);
+});
+
+test("a good seen on only one side takes the other side from the sell/buy ratio of the rest", async () => {
+  // Grain is only ever bought (0.1); salt gives a sell/buy ratio of 0.2 / 0.12, so grain sells at 0.1 x that.
+  const gs = GS.replace(
+    "      transactions={ trade_market=100 trade_good=trade_good_grain type=sell amount=1 price_per_unit=0.15 }\n",
+    "",
+  );
+  const info = (await queryGamestate(Buffer.from(gs), (q) =>
+    extractTradeSuggestions(q, new Localizer(null), new GameData(null), GOODS),
+  ))!;
+  const grain = info.suggestions
+    .find((x) => x.other.id === 101)!
+    .flows.find((f) => f.good === "trade_good_grain")!;
+  expect(grain.profit).toBeCloseTo(25 * (0.1 * (0.2 / 0.12) - 0.1), 6);
+});
+
+test("a good that would sell for no more than it costs adds no flow", async () => {
+  const gs = GS.replace(
+    "type=sell amount=1 price_per_unit=0.15",
+    "type=sell amount=1 price_per_unit=0.08",
+  );
+  const info = (await queryGamestate(Buffer.from(gs), (q) =>
+    extractTradeSuggestions(q, new Localizer(null), new GameData(null), GOODS),
+  ))!;
+  const flows = info.suggestions.find((x) => x.other.id === 101)!.flows;
+  expect(flows.map((f) => f.good)).toEqual(["trade_good_salt"]);
 });
 
 test("anchors are the realm market and the markets of own routes; linked pairs are skipped", async () => {
@@ -150,8 +180,8 @@ test("expertise raises the value of sales in a category by the per-level modifie
   const info = await runXp(XP_GS, CATS);
   const s = info.suggestions.find((x) => x.other.id === 101)!;
   expect(info.expertiseApplied).toBe(true);
-  // out grain 25 at 0.1 gets x(1 + 3 x 0.1) = x1.3; in salt 20 at 0.2 has no modifier.
-  expect(s.score).toBeCloseTo(plain.score + 25 * 0.1 * 0.3, 6);
+  // Grain sells at 0.15 x (1 + 3 x 0.1) = x1.3 on 25 units; salt has no modifier.
+  expect(s.score).toBeCloseTo(plain.score + 25 * 0.15 * 0.3, 6);
   // No route of the player fulfils the staples category, so it is flagged as decaying.
   expect(s.xpCategories).toEqual([
     { category: "trade_category_staples", level: 3, decaying: true, goods: ["trade_good_grain"] },

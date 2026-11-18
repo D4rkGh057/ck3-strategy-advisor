@@ -15,16 +15,21 @@ export interface MarketRef {
 
 export interface Flow {
   good: string;
-  /** Units the first market can still sell and the second still needs (the smaller of the two). */
+  /** Units the surplus market can still supply and the other still needs (the smaller of the two). */
   amount: number;
-  /** `out` = the anchor sells to the other market; `in` = the anchor buys from it. */
+  /** `out` = the route buys at the anchor and sells at the other market; `in` = the reverse. */
   direction: "out" | "in";
+  /** `amount` x (sell price - buy price), at the average prices seen in route transactions. */
+  profit: number;
 }
 
 export interface Suggestion {
   anchor: MarketRef;
   other: MarketRef;
-  /** Sum of amount x reference price over the flows: a ranking score, not an income. */
+  /**
+   * Sum of the flows' profit (sell - buy at the average transaction prices): the same quantity as a
+   * route's `gold`, but an estimate that assumes the route carries every good listed.
+   */
   score: number;
   distance: number | null;
   flows: Flow[];
@@ -76,7 +81,8 @@ function flowTotals(r: Rec | undefined): { sell: number; want: number } {
 /**
  * Ranks market pairs worth a new route: your anchor markets (markets of your realm, of your own
  * routes and of your capital) against every other market, by how much unsold surplus of one side
- * meets unmet need on the other, valued at the average price seen in route transactions.
+ * meets unmet need on the other, valued at the profit a route makes on it (sell price minus buy
+ * price, averaged separately over the route transactions).
  * The save does not say which pairs can be connected, nor route limits or costs, so candidates are
  * cut to the route length: the longest route you run (in province hops), turned into a distance
  * with the hops-per-distance ratio of existing routes. When the category data is
@@ -122,7 +128,10 @@ export function extractTradeSuggestions(
   };
 
   // Reference prices and the reach seen in existing routes.
-  const sums = new Map<string, { total: number; n: number }>();
+  // A route earns (what it sells) - (what it buys): the save's route `gold` equals that difference,
+  // and sell prices run above buy prices, so the two sides are averaged apart.
+  const buys = new Map<string, { total: number; n: number }>();
+  const sells = new Map<string, { total: number; n: number }>();
   const samples: RouteSample[] = [];
   const linked = new Set<string>();
   const ownMarkets = new Set<number>();
@@ -137,10 +146,12 @@ export function extractTradeSuggestions(
     for (const t of txs as Rec[]) {
       const p = num(t["price_per_unit"]);
       if (typeof t["trade_good"] !== "string" || p === null) continue;
-      const s = sums.get(t["trade_good"]) ?? { total: 0, n: 0 };
+      const side = t["type"] === "buy" ? buys : t["type"] === "sell" ? sells : null;
+      if (!side) continue;
+      const s = side.get(t["trade_good"]) ?? { total: 0, n: 0 };
       s.total += p;
       s.n++;
-      sums.set(t["trade_good"], s);
+      side.set(t["trade_good"], s);
     }
     const ms = idList(r["trade_markets"]);
     for (const a of ms)
@@ -186,16 +197,44 @@ export function extractTradeSuggestions(
   };
   // Distance beyond which a pair would need more hops than the route length allows.
   const reach = hopsPerDistance !== null ? maxHops / hopsPerDistance : null;
-  let totalP = 0;
-  let totalN = 0;
-  for (const s of sums.values()) {
-    totalP += s.total;
-    totalN += s.n;
+  const avgOf = (m: Map<string, { total: number; n: number }>, g: string): number | null => {
+    const s = m.get(g);
+    return s ? s.total / s.n : null;
+  };
+  const sideTotals = (m: Map<string, { total: number; n: number }>) => {
+    let total = 0;
+    let n = 0;
+    for (const s of m.values()) {
+      total += s.total;
+      n += s.n;
+    }
+    return { avg: n > 0 ? total / n : null, n };
+  };
+  const globalBuy = sideTotals(buys);
+  const globalSell = sideTotals(sells);
+  const priceSamples = globalBuy.n + globalSell.n;
+  // Sell price over buy price, averaged over the goods seen on both sides; it stands in for the
+  // missing side of a good that only one kind of transaction has been seen for.
+  const ratios: number[] = [];
+  for (const g of buys.keys()) {
+    const b = avgOf(buys, g);
+    const s = avgOf(sells, g);
+    if (b !== null && s !== null && b > 0) ratios.push(s / b);
   }
-  const fallbackPrice = totalN > 0 ? totalP / totalN : 0;
-  const price = (g: string): number => {
-    const s = sums.get(g);
-    return s ? s.total / s.n : fallbackPrice;
+  const sellOverBuy = ratios.length > 0 ? ratios.reduce((t, r) => t + r, 0) / ratios.length : null;
+  const buyPrice = (g: string): number | null => {
+    const own = avgOf(buys, g);
+    if (own !== null) return own;
+    const sold = avgOf(sells, g);
+    if (sold !== null && sellOverBuy !== null) return sold / sellOverBuy;
+    return globalBuy.avg;
+  };
+  const sellPrice = (g: string): number | null => {
+    const own = avgOf(sells, g);
+    if (own !== null) return own;
+    const bought = avgOf(buys, g);
+    if (bought !== null && sellOverBuy !== null) return bought * sellOverBuy;
+    return globalSell.avg;
   };
 
   // Anchors: realm markets, markets of your routes, and the market of your capital's duchy.
@@ -231,16 +270,22 @@ export function extractTradeSuggestions(
     for (const [key, def] of cats.defs)
       if (levels.has(key))
         for (const g of def.goods) goodCats.set(g, [...(goodCats.get(g) ?? []), key]);
-  const priceMult = (good: string, direction: "out" | "in"): number => {
+  const priceMult = (good: string, side: "sell" | "buy"): number => {
     let m = 1;
     for (const key of goodCats.get(good) ?? []) {
       const def = cats!.defs.get(key)!;
       const lvl = levels.get(key)!.level;
-      m += direction === "out" ? lvl * def.sellPerLevel : lvl * -def.buyPerLevel;
+      m += side === "sell" ? lvl * def.sellPerLevel : lvl * -def.buyPerLevel;
     }
     return m;
   };
-  const worth = (f: Flow): number => f.amount * price(f.good) * priceMult(f.good, f.direction);
+  /** Profit per unit moved: the route buys where the good is in surplus and sells where it is needed. */
+  const margin = (good: string): number | null => {
+    const buy = buyPrice(good);
+    const sell = sellPrice(good);
+    if (buy === null || sell === null) return null;
+    return sell * priceMult(good, "sell") - buy * priceMult(good, "buy");
+  };
 
   const balance = (id: number, g: number): { sell: number; want: number } =>
     flowTotals(
@@ -262,12 +307,16 @@ export function extractTradeSuggestions(
         const B = balance(b, g);
         const outAmt = Math.min(A.sell, B.want);
         const inAmt = Math.min(B.sell, A.want);
-        if (outAmt > 0) flows.push({ good: goods[g]!, amount: outAmt, direction: "out" });
-        if (inAmt > 0) flows.push({ good: goods[g]!, amount: inAmt, direction: "in" });
+        const unit = margin(goods[g]!);
+        if (unit === null || unit <= 0) continue;
+        if (outAmt > 0)
+          flows.push({ good: goods[g]!, amount: outAmt, direction: "out", profit: outAmt * unit });
+        if (inAmt > 0)
+          flows.push({ good: goods[g]!, amount: inAmt, direction: "in", profit: inAmt * unit });
       }
       if (flows.length === 0) continue;
-      flows.sort((x, y) => worth(y) - worth(x));
-      const score = flows.reduce((s, f) => s + worth(f), 0);
+      flows.sort((x, y) => y.profit - x.profit);
+      const score = flows.reduce((s, f) => s + f.profit, 0);
       const touched = new Map<string, Set<string>>();
       for (const f of flows)
         for (const key of goodCats.get(f.good) ?? [])
@@ -294,7 +343,7 @@ export function extractTradeSuggestions(
     anchors: [...anchorIds].map(mk),
     routeLength,
     reach,
-    priceSamples: totalN,
+    priceSamples,
     expertiseApplied,
     suggestions: out.slice(0, TOP),
   };

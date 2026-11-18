@@ -15,11 +15,12 @@ function categoryName(cache: SnapshotCache, key: string): string {
 }
 
 function line(cache: SnapshotCache, s: Suggestion): string {
+  // The route buys where the good is in surplus and sells where it is needed (the game's own wording).
   const flows = s.flows
-    .map(
-      (f) =>
-        `${f.direction === "out" ? "sell" : "buy"} ${Math.round(f.amount)} ${goodName(cache, f.good)}`,
-    )
+    .map((f) => {
+      const [from, to] = f.direction === "out" ? [s.anchor, s.other] : [s.other, s.anchor];
+      return `${Math.round(f.amount)} ${goodName(cache, f.good)} (buy ${from.place}, sell ${to.place}, +${f.profit.toFixed(2)})`;
+    })
     .join(", ");
   const dist = s.distance !== null ? `, distance ${Math.round(s.distance)}` : "";
   const xp = s.xpCategories.length
@@ -40,15 +41,20 @@ export function registerTradeSuggestionsTool(server: McpServer, cache: SnapshotC
     {
       title: "Trade route suggestions",
       description:
-        "Market pairs worth a new trade route (Silk and Silver saves), ranked by unsold surplus on one side meeting " +
-        "unmet need on the other, valued at the average price seen in existing route transactions. Your anchor " +
+        "Market pairs worth a new trade route (Silk and Silver saves), ranked by estimated profit: a route earns what " +
+        "it sells minus what it buys (the route's `gold` in the save is exactly that), so each good with unsold surplus " +
+        "on one side meeting unmet need on the other adds units x (sell price - buy price), using the average buy and " +
+        "sell prices seen in existing route transactions. The score is in the same unit as a route's `gold`, so " +
+        "compare it with the balance of the route you run now. Your anchor " +
         "markets are those of your realm, of your own routes and of your capital's duchy; pairs you already link " +
         "are skipped. Goods are named from the game files (CK3_GAME_DIR), because the save keys them by position; " +
         "without them the tool refuses rather than guess. Limits: the save does not say which markets CAN be " +
         "connected, nor your route length limit (province hops, +10 base plus modifiers), costs or income, so candidates " +
         "are cut to the longest route you already run (the game's base of 10 if you run none), converted to a " +
         "distance with the hops-per-distance ratio of existing routes (when province distances are available): an " +
-        "estimate that can under- or over-state the real limit. The score is a ranking estimate, not a profit. " +
+        "estimate that can under- or over-state the real limit. The score is an estimate: it assumes the route " +
+        "carries every good listed (routes with several goods exist, but the save does not say how many a route can " +
+        "carry), ignores caravan capacity and stop limits, and a pair is only two stops. " +
         "Surplus is read as surplus minus export and need as need minus import, an inference from the save fields. " +
         "With the game files available, goods of categories where you hold trade expertise are valued with the " +
         "category's per-level price modifier (usually +0.1% sell price per level, so a small effect), and each pair " +
@@ -103,7 +109,7 @@ export function registerTradeSuggestionsTool(server: McpServer, cache: SnapshotC
         body += "No pair with unsold surplus meeting unmet need.\n";
       else body += info.suggestions.map((s) => line(cache, s)).join("");
       body +=
-        "\n_Scores rank pairs; they are not income. Connectability and route limits are not in the save._\n";
+        "\n_Scores estimate a route's gold balance (sell - buy). Connectability, impassable terrain and route limits are not in the save._\n";
       return say(body);
     },
   );
