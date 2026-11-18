@@ -26,7 +26,7 @@ async function main() {
     new HistoryStore(defaultHistoryDir()),
   );
   const server = new McpServer(
-    { name: "ck3-strategy-advisor", version: "0.1.0" },
+    { name: "ck3-strategy-advisor", version: "0.2.0" },
     {
       instructions:
         "Tools report the player's CK3 realm from their latest save. Each response is stamped with the save's in-game date and age.",

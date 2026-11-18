@@ -48,7 +48,13 @@ ordinary saves and the freshest one is picked up.
 
 ## Register with Claude
 
-Add it as a local stdio MCP server. In **Claude Code**:
+Once published to npm, no clone is needed:
+
+```bash
+claude mcp add ck3-advisor -- npx -y @d4rkgh057/ck3-strategy-advisor
+```
+
+Or from a clone, add it as a local stdio MCP server. In **Claude Code**:
 
 ```bash
 claude mcp add ck3-advisor -- node /absolute/path/to/ck3mod/dist/index.js
