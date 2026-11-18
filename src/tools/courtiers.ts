@@ -5,7 +5,7 @@ import { ROLE_SKILL, extractCouncil, type CouncilRole } from "../extract/council
 import { extractFactions } from "../extract/vassals.js";
 import { z } from "zod";
 import { extractPool, type PoolCharacter, type PoolScope } from "../extract/courtiers.js";
-import { errorResult, loadSnapshot } from "./kit.js";
+import { errorResult, loadQuery, loadSnapshot } from "./kit.js";
 
 const UPGRADE_MARGIN = 3;
 
@@ -41,24 +41,22 @@ export function registerCourtiersTool(server: McpServer, cache: SnapshotCache) {
       const snap = snapLoad.value;
       const year = Number.parseInt(snap.date, 10);
       // Same key and shape as the `council` tool, so the two share one extraction per save.
-      const councilRes = await cache.memoQuery("council", (q) => ({
-        council: extractCouncil(
+      const councilRes = await loadQuery(cache, "council", (q) =>
+        extractCouncil(
           q,
           cache.loc,
           cache.lookup,
           Number.isFinite(year) ? year : null,
           extractFactions(q, cache.loc).memberIds,
         ),
-      }));
-      if ("error" in councilRes)
-        return { isError: true, content: [{ type: "text", text: councilRes.error }] };
-      const poolRes = await cache.memoQuery(`court_candidates:pool:${scope ?? "empire"}`, (q) => ({
-        pool: extractPool(q, cache.loc, cache.lookup, year, scope ?? "empire"),
-      }));
-      if ("error" in poolRes)
-        return { isError: true, content: [{ type: "text", text: poolRes.error }] };
-      const { council } = councilRes;
-      const { pool } = poolRes;
+      );
+      if (!councilRes.ok) return errorResult(councilRes.error);
+      const poolRes = await loadQuery(cache, `court_candidates:pool:${scope ?? "empire"}`, (q) =>
+        extractPool(q, cache.loc, cache.lookup, year, scope ?? "empire"),
+      );
+      if (!poolRes.ok) return errorResult(poolRes.error);
+      const council = councilRes.value;
+      const pool = poolRes.value;
       if (!pool)
         return { content: [{ type: "text", text: stamp(snap, "Player faith not found.") }] };
 

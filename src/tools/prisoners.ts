@@ -3,7 +3,7 @@ import type { SnapshotCache } from "../cache.js";
 import { stamp, truncate } from "../format.js";
 import { extractPrisoners, type Prisoner } from "../extract/prisoners.js";
 import { SKILL_NOTE, formatEffective } from "../extract/skills.js";
-import { errorResult, loadSnapshot } from "./kit.js";
+import { errorResult, loadQuery, loadSnapshot } from "./kit.js";
 
 function prisonerBlock(p: Prisoner): string {
   const where =
@@ -41,14 +41,14 @@ export function registerPrisonersTool(server: McpServer, cache: SnapshotCache) {
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async () => {
-      const res = await cache.memoQuery("prisoners", (q, shared) => ({
-        info: extractPrisoners(q, cache.loc, cache.lookup, shared),
-      }));
-      if ("error" in res) return { isError: true, content: [{ type: "text", text: res.error }] };
+      const res = await loadQuery(cache, "prisoners", (q, shared) =>
+        extractPrisoners(q, cache.loc, cache.lookup, shared),
+      );
+      if (!res.ok) return errorResult(res.error);
       const snapLoad = await loadSnapshot(cache);
       if (!snapLoad.ok) return errorResult(snapLoad.error);
       const snap = snapLoad.value;
-      const { info } = res;
+      const info = res.value;
       if (!info) return { content: [{ type: "text", text: stamp(snap, "Player not found.") }] };
 
       let body = `# Prisoners you hold: ${info.held.length}\n\n`;

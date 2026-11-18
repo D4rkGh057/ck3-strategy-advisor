@@ -3,7 +3,7 @@ import type { SnapshotCache } from "../cache.js";
 import { stamp, truncate } from "../format.js";
 import { extractTrade, type CategoryExpertise, type TradeRoute } from "../extract/trade.js";
 import { loadTradeCategories, loadXpLevelThreshold } from "../tradeGoods.js";
-import { errorResult, loadSnapshot } from "./kit.js";
+import { errorResult, loadQuery, loadSnapshot } from "./kit.js";
 
 function categoryName(cache: SnapshotCache, key: string): string {
   const v = cache.loc.resolve(key);
@@ -47,19 +47,19 @@ export function registerTradeTool(server: McpServer, cache: SnapshotCache) {
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async () => {
-      const res = await cache.memoQuery("trade", (q) => ({
-        info: extractTrade(
+      const res = await loadQuery(cache, "trade", (q) =>
+        extractTrade(
           q,
           cache.loc,
           loadTradeCategories(cache.game.root),
           loadXpLevelThreshold(cache.game.root),
         ),
-      }));
-      if ("error" in res) return { isError: true, content: [{ type: "text", text: res.error }] };
+      );
+      if (!res.ok) return errorResult(res.error);
       const snapLoad = await loadSnapshot(cache);
       if (!snapLoad.ok) return errorResult(snapLoad.error);
       const snap = snapLoad.value;
-      const { info } = res;
+      const info = res.value;
       if (!info)
         return {
           content: [

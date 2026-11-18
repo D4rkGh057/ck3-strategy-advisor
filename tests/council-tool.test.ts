@@ -19,7 +19,7 @@ async function runCouncil(government: string | null): Promise<string> {
   };
   const cache = {
     get: async () => snap,
-    memoQuery: async () => ({ council }),
+    memoQuery: async () => ({ data: council }),
     loc: { decodeNames: (s: string) => s },
     lookup: {},
   } as any;

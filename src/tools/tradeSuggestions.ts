@@ -3,7 +3,7 @@ import type { SnapshotCache } from "../cache.js";
 import { stamp } from "../format.js";
 import { loadCategoryModel, loadTradeGoods, loadXpLevelThreshold } from "../tradeGoods.js";
 import { extractTradeSuggestions, type Suggestion } from "../extract/tradeSuggestions.js";
-import { errorResult, loadSnapshot } from "./kit.js";
+import { errorResult, loadQuery, loadSnapshot } from "./kit.js";
 
 function goodName(cache: SnapshotCache, key: string): string {
   const v = cache.loc.resolve(key);
@@ -72,8 +72,8 @@ export function registerTradeSuggestionsTool(server: McpServer, cache: SnapshotC
     },
     async () => {
       const goods = loadTradeGoods(cache.game.root);
-      const res = await cache.memoQuery("trade_suggestions", (q) => ({
-        info: extractTradeSuggestions(
+      const res = await loadQuery(cache, "trade_suggestions", (q) =>
+        extractTradeSuggestions(
           q,
           cache.loc,
           cache.game,
@@ -81,12 +81,12 @@ export function registerTradeSuggestionsTool(server: McpServer, cache: SnapshotC
           loadCategoryModel(cache.game.root),
           loadXpLevelThreshold(cache.game.root),
         ),
-      }));
-      if ("error" in res) return { isError: true, content: [{ type: "text", text: res.error }] };
+      );
+      if (!res.ok) return errorResult(res.error);
       const snapLoad = await loadSnapshot(cache);
       if (!snapLoad.ok) return errorResult(snapLoad.error);
       const snap = snapLoad.value;
-      const { info } = res;
+      const info = res.value;
       const say = (t: string) => ({ content: [{ type: "text" as const, text: stamp(snap, t) }] });
       if (!info) return say("This save has no trade data (pre-Silk and Silver or the DLC is off).");
       if (!info.goodsAvailable)

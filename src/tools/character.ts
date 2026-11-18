@@ -5,7 +5,7 @@ import { extractCharacter, findCharacters } from "../extract/characters.js";
 import { resolveTitleName } from "../extract/titleUtils.js";
 import { stamp, truncate } from "../format.js";
 import { SKILL_NOTE, formatEffective } from "../extract/skills.js";
-import { errorResult, loadSnapshot } from "./kit.js";
+import { errorResult, loadQuery, loadSnapshot } from "./kit.js";
 
 export function registerCharacterTools(server: McpServer, cache: SnapshotCache) {
   server.registerTool(
@@ -26,8 +26,7 @@ export function registerCharacterTools(server: McpServer, cache: SnapshotCache) 
 
       // FIX D: use pre-converted text (once per save, not per call)
       const textResult = await cache.rawGamestateText();
-      if (typeof textResult !== "string")
-        return { isError: true, content: [{ type: "text", text: textResult.error }] };
+      if (typeof textResult !== "string") return errorResult(textResult.error);
       const text = textResult;
 
       const all = findCharacters(text, name, (r) => cache.loc.charName(r));
@@ -83,17 +82,12 @@ export function registerCharacterTools(server: McpServer, cache: SnapshotCache) 
       if (!snapLoad.ok) return errorResult(snapLoad.error);
       const snap = snapLoad.value;
 
-      const result = await cache.memoQuery(`character:${id}`, (q) =>
+      const result = await loadQuery(cache, `character:${id}`, (q) =>
         extractCharacter(q, cache.loc, id, cache.lookup),
       );
-      if (result !== null && typeof result === "object" && "error" in result) {
-        return {
-          isError: true,
-          content: [{ type: "text", text: (result as { error: string }).error }],
-        };
-      }
+      if (!result.ok) return errorResult(result.error);
 
-      const c = result as import("../extract/characters.js").CharacterInfo | null;
+      const c = result.value;
       if (!c) {
         // FIX B: stamp character not-found response
         return { content: [{ type: "text", text: stamp(snap, `No character with id ${id}.`) }] };

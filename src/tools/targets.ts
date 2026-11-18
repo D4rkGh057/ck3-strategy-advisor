@@ -3,7 +3,7 @@ import { z } from "zod";
 import type { SnapshotCache } from "../cache.js";
 import { stamp } from "../format.js";
 import { extractTargets, type Route, type Target } from "../extract/targets.js";
-import { errorResult, loadSnapshot } from "./kit.js";
+import { errorResult, loadQuery, loadSnapshot } from "./kit.js";
 
 const ROUTE_LABEL: Record<Route, string> = {
   de_jure: "de jure (in a duchy you hold)",
@@ -48,15 +48,11 @@ export function registerTargetsTool(server: McpServer, cache: SnapshotCache) {
       const snapLoad = await loadSnapshot(cache);
       if (!snapLoad.ok) return errorResult(snapLoad.error);
       const snap = snapLoad.value;
-      const result = await cache.memoQuery("expansion_targets", (q) =>
+      const result = await loadQuery(cache, "expansion_targets", (q) =>
         extractTargets(q, cache.loc, snap.military.strength),
       );
-      if (result !== null && typeof result === "object" && "error" in result)
-        return {
-          isError: true,
-          content: [{ type: "text", text: (result as { error: string }).error }],
-        };
-      const r = result as ReturnType<typeof extractTargets>;
+      if (!result.ok) return errorResult(result.error);
+      const r = result.value;
       if (!r)
         return {
           content: [{ type: "text", text: stamp(snap, "No primary title to expand from.") }],

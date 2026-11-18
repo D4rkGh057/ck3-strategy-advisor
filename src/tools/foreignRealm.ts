@@ -3,7 +3,7 @@ import { z } from "zod";
 import type { SnapshotCache } from "../cache.js";
 import { extractForeignRealm, type ForeignRealmInfo } from "../extract/foreignRealm.js";
 import { stamp } from "../format.js";
-import { errorResult, loadSnapshot } from "./kit.js";
+import { errorResult, loadQuery, loadSnapshot } from "./kit.js";
 
 const TIER_LABEL: Record<string, string> = {
   empire: "Empire",
@@ -67,16 +67,11 @@ export function registerForeignRealmTool(server: McpServer, cache: SnapshotCache
       if (!snapLoad.ok) return errorResult(snapLoad.error);
       const snap = snapLoad.value;
 
-      const result = await cache.memoQuery(`foreign_realm:${name}`, (q) =>
+      const result = await loadQuery(cache, `foreign_realm:${name}`, (q) =>
         extractForeignRealm(q, cache.loc, name),
       );
-      if (result !== null && typeof result === "object" && "error" in result) {
-        return {
-          isError: true,
-          content: [{ type: "text", text: (result as { error: string }).error }],
-        };
-      }
-      const info = result as ForeignRealmInfo | null;
+      if (!result.ok) return errorResult(result.error);
+      const info = result.value;
       if (!info) {
         return { content: [{ type: "text", text: stamp(snap, `No realm matching '${name}'.`) }] };
       }

@@ -82,7 +82,7 @@ export function registerExpansionTool(server: McpServer, cache: SnapshotCache) {
         return { content: [{ type: "text", text: stamp(snap, body) }] };
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        return { isError: true, content: [{ type: "text", text: msg }] };
+        return errorResult(msg);
       }
     },
   );

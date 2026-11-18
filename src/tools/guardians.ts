@@ -2,7 +2,6 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { SnapshotCache } from "../cache.js";
 import { stamp, truncate } from "../format.js";
-import { errorResult, loadSnapshot } from "./kit.js";
 import {
   extractGuardians,
   type ChildEntry,
@@ -10,6 +9,7 @@ import {
   type RoleCandidate,
   type RoleRanking,
 } from "../extract/guardians.js";
+import { errorResult, loadQuery, loadSnapshot } from "./kit.js";
 
 const ROLE_TITLE: Record<string, string> = {
   tutor: "Court tutor (aptitude: 25 + Learning x2.5 + traits)",
@@ -116,14 +116,14 @@ export function registerGuardiansTool(server: McpServer, cache: SnapshotCache) {
     },
     async ({ top, per_child }: { top?: number; per_child?: number }) => {
       const perChild = per_child ?? 3;
-      const res = await cache.memoQuery(`guardians:${perChild}`, (q, shared) => ({
-        info: extractGuardians(q, cache.loc, cache.lookup, perChild, shared),
-      }));
-      if ("error" in res) return { isError: true, content: [{ type: "text", text: res.error }] };
+      const res = await loadQuery(cache, `guardians:${perChild}`, (q, shared) =>
+        extractGuardians(q, cache.loc, cache.lookup, perChild, shared),
+      );
+      if (!res.ok) return errorResult(res.error);
       const snapLoad = await loadSnapshot(cache);
       if (!snapLoad.ok) return errorResult(snapLoad.error);
       const snap = snapLoad.value;
-      const { info } = res;
+      const info = res.value;
       if (!info) return { content: [{ type: "text", text: stamp(snap, "Player not found.") }] };
 
       let body = `# Guardians and tutors: ${info.children.length} children at court\n\n`;

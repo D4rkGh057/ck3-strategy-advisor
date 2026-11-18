@@ -2,7 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { SnapshotCache } from "../cache.js";
 import { stamp, truncate } from "../format.js";
 import { extractRaids, type RaidArmy } from "../extract/raids.js";
-import { errorResult, loadSnapshot } from "./kit.js";
+import { errorResult, loadQuery, loadSnapshot } from "./kit.js";
 
 // "pillage_intent_tribal" -> "pillage (tribal)"; "destruction_intent" -> "destruction".
 function intentLabel(raw: string | null): string {
@@ -42,24 +42,24 @@ export function registerRaidsTool(server: McpServer, cache: SnapshotCache) {
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async () => {
-      const res = await cache.memoQuery("raids", (q) => extractRaids(q));
-      if ("error" in res) return { isError: true, content: [{ type: "text", text: res.error }] };
+      const res = await loadQuery(cache, "raids", (q) => extractRaids(q));
+      if (!res.ok) return errorResult(res.error);
       const snapLoad = await loadSnapshot(cache);
       if (!snapLoad.ok) return errorResult(snapLoad.error);
       const snap = snapLoad.value;
 
-      const raiding = res.mine.filter((a) => a.active).length;
-      let body = `# Your raid armies: ${res.mine.length} (${raiding} raiding)\n\n`;
-      if (res.mine.length === 0) body += "You own no raid-capable army.\n";
-      else body += res.mine.map((a) => army(a, false)).join("");
+      const raiding = res.value.mine.filter((a) => a.active).length;
+      let body = `# Your raid armies: ${res.value.mine.length} (${raiding} raiding)\n\n`;
+      if (res.value.mine.length === 0) body += "You own no raid-capable army.\n";
+      else body += res.value.mine.map((a) => army(a, false)).join("");
 
-      body += `\n# Other rulers' active raids: ${res.others.length}\n\n`;
-      if (res.others.length === 0) body += "None running.\n";
+      body += `\n# Other rulers' active raids: ${res.value.others.length}\n\n`;
+      if (res.value.others.length === 0) body += "None running.\n";
       else {
-        const t = truncate(res.others, 15);
+        const t = truncate(res.value.others, 15);
         body += t.shown.map((a) => army(a, true)).join("") + t.note;
       }
-      body += `\n_${res.worldActive} raids are active in the whole save._\n`;
+      body += `\n_${res.value.worldActive} raids are active in the whole save._\n`;
       return { content: [{ type: "text", text: stamp(snap, body) }] };
     },
   );

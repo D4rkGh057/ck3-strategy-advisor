@@ -133,7 +133,7 @@ describe("foreign_realm tool", () => {
     const cache = {
       get: async () => snap,
       query: async () => null,
-      memoQuery: async () => null,
+      memoQuery: async () => ({ data: null }),
       loc: null,
     } as any;
     let handler: any;

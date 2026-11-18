@@ -2,7 +2,6 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { SnapshotCache } from "../cache.js";
 import { stamp } from "../format.js";
 import { extractFactions } from "../extract/vassals.js";
-import { errorResult, loadSnapshot } from "./kit.js";
 import {
   ROLE_SKILL,
   riskNotes,
@@ -11,6 +10,7 @@ import {
   type Courtier,
   type CouncilRole,
 } from "../extract/council.js";
+import { errorResult, loadQuery, loadSnapshot } from "./kit.js";
 
 const NO_COUNCIL_GOVERNMENT = "merchant_government";
 
@@ -60,18 +60,17 @@ export function registerCouncilTool(server: McpServer, cache: SnapshotCache) {
       const snap = snapLoad.value;
       const year = Number.parseInt(snap.date, 10);
       // Same key and shape as `court_candidates`, so the two share one extraction per save.
-      const result = await cache.memoQuery("council", (q) => ({
-        council: extractCouncil(
+      const result = await loadQuery(cache, "council", (q) =>
+        extractCouncil(
           q,
           cache.loc,
           cache.lookup,
           Number.isFinite(year) ? year : null,
           extractFactions(q, cache.loc).memberIds,
         ),
-      }));
-      if ("error" in result)
-        return { isError: true, content: [{ type: "text", text: result.error }] };
-      const { council } = result;
+      );
+      if (!result.ok) return errorResult(result.error);
+      const council = result.value;
       // The game's `valid_position` for all five seats excludes government_is_merchant, so a
       // merchant has no council; suggesting seats would be misleading.
       const noCouncil = snap.overview.government === NO_COUNCIL_GOVERNMENT;
