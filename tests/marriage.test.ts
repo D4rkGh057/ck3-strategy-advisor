@@ -276,12 +276,16 @@ test("a ruler in the candidate's close family counts as an alliance, genes and h
   expect(r!.candidates[0]!.name.startsWith("Princess")).toBe(true);
 });
 
-async function renderTool(args: Record<string, unknown>): Promise<string> {
-  const { loc, lookup } = setup();
+async function renderTool(
+  args: Record<string, unknown>,
+  gs: Buffer = GS,
+  env: ReturnType<typeof setup> = setup(),
+): Promise<string> {
+  const { loc, lookup } = env;
   const cache = {
     get: async () => ({ date: "1066.9.15", parsedAt: Date.now() }),
     memoQuery: (_key: string, fn: (q: unknown, shared: object) => unknown) =>
-      queryGamestate(GS, (q) => fn(q, {})),
+      queryGamestate(gs, (q) => fn(q, {})),
     loc,
     lookup,
   } as any;
@@ -307,4 +311,11 @@ test("the tool renders each candidate with where they are, skills, traits and fe
   expect(text).toContain("brave");
   expect(text).toContain("fertility 0.50");
   expect(text).not.toContain("None found");
+});
+
+test("the tool renders distance, alliance and genes on the candidate's extra line", async () => {
+  const text = await renderTool({ id: 1, rank: "priority" }, MAP_GS, mapSetup());
+  expect(text).toMatch(/distance 500 \| parent \S.* rules \(army 3500\): alliance plausible/);
+  expect(text).toContain("good genes:");
+  expect(text).toContain("⚠ bad genes:");
 });
